@@ -126,7 +126,7 @@
     "@e2b/code-interpreter": "2.8.0",
     "@openai/agents": "workspace:>=0.0.0",
     "@openai/codex-sdk": "^0.167.2",
-    "@vercel/sandbox": "1.9.3",
+    "@vercel/sandbox": "4.0.0",
     "ai": "^6.0.277",
     "e2b": "2.52.0",
     "modal": "0.7.6",
