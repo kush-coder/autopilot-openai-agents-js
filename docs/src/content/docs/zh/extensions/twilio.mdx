@@ -1,0 +1,86 @@
+---
+title: Twilio 上的语音智能体
+description: Run Agents SDK voice agents over Twilio phone calls
+canonicalHeadingIds:
+  - depth: 2
+    id: 'setup'
+    aliases:
+      - '设置'
+  - depth: 2
+    id: 'tips-and-considerations'
+    aliases:
+      - '提示与注意事项'
+  - depth: 2
+    id: 'full-example-server'
+    aliases:
+      - '完整示例服务器'
+      - '完整服务器示例'
+---
+
+import { Aside, Steps, Code } from '@astrojs/starlight/components';
+import twilioBasicExample from '../../../../../../examples/docs/extensions/twilio-basic.ts?raw';
+import twilioConnectExample from '../../../../../../examples/docs/extensions/twilio-connect.ts?raw';
+
+Twilio 提供了 [Media Streams API](https://www.twilio.com/docs/voice/media-streams)，可将电话通话的原始音频发送到 WebSocket 服务器。您可以通过这种方式将[语音智能体概述](/openai-agents-js/zh/guides/voice-agents)中介绍的语音智能体连接到 Twilio。您可以在 `websocket` 模式下使用默认的 Realtime 会话传输机制，将来自 Twilio 的事件接入 Realtime 会话。不过，由于电话通话的延迟通常高于基于 Web 的对话，您需要设置正确的音频格式，并自行调整打断时机。
+
+为了简化配置过程，我们创建了一个专用传输层，负责处理与 Twilio 的连接，包括打断处理和音频转发。
+
+<Aside type="caution">
+  此适配器仍处于 beta 阶段。您可能会遇到边界情况相关的问题或缺陷。 请通过
+  [GitHub issues](https://github.com/openai/openai-agents-js/issues)
+  报告任何问题，我们会尽快 修复。
+</Aside>
+
+## 设置
+
+<Steps>
+
+1. **确保您拥有 Twilio 账户和 Twilio 电话号码。**
+
+2. **设置一台服务器来验证来自 Twilio 的请求。**
+
+   如果您在本地开发，需要配置本地隧道，例如 [`ngrok`](https://ngrok.io/) 或 [Cloudflare Tunnel](https://developers.cloudflare.com/pages/how-to/preview-with-cloudflare-tunnel/)，以便 Twilio 能够访问您的本地服务器。服务器必须在创建传输层或连接 OpenAI 之前，验证传入呼叫 webhook 请求和 WebSocket 升级请求中的 `X-Twilio-Signature`。请使用 [Twilio 官方请求验证器](https://www.twilio.com/docs/usage/security)、账户的主 Auth Token 和预先配置的公共 URL。不要根据请求的 Host 或转发头推导该 URL。`TwilioRealtimeTransportLayer` 接收的是已经过身份验证的 WebSocket；此适配器不会对 HTTP 请求进行身份验证。
+
+3. **通过安装扩展包来安装 Twilio 适配器：**
+
+   ```bash
+   npm install @openai/agents-extensions
+   ```
+
+4. **导入适配器和模型，以连接到您的 `RealtimeSession`：**
+
+   <Code
+     lang="typescript"
+     code={twilioBasicExample.replace(
+       /\n\s+\/\/ @ts-expect-error - this is not defined/g,
+       '',
+     )}
+   />
+
+5. **将您的 `RealtimeSession` 连接到 Twilio：**
+
+   <Code lang="typescript" code={twilioConnectExample} />
+
+</Steps>
+
+`RealtimeSession` 的所有预期事件和行为都会正常工作，包括工具调用、护栏等。有关如何将 `RealtimeSession` 与语音智能体结合使用的更多信息，请阅读[语音智能体概述](/openai-agents-js/zh/guides/voice-agents)。
+
+## 提示与注意事项
+
+1. **速度是关键。**
+
+   为了接收来自 Twilio 的所有必要事件和音频，您应该在经过身份验证的 WebSocket 连接可用后，尽快创建 `TwilioRealtimeTransportLayer` 实例，并立即调用 `session.connect()`。
+
+2. **访问原始 Twilio 事件。**
+
+   如果您想访问 Twilio 发送的原始事件，可以监听 `RealtimeSession` 实例上的 `transport_event` 事件。来自 Twilio 的每个事件的类型都是 `twilio_message`，并且都有一个包含原始事件数据的 `message` 属性。
+
+3. **查看调试日志。**
+
+   有时您可能会遇到问题，需要了解更多运行情况。设置环境变量 `DEBUG=openai-agents*` 可显示 Agents SDK 的所有调试日志。您也可以使用 `DEBUG=openai-agents:extensions:twilio*`，仅启用 Twilio 适配器的调试日志。
+
+## 完整示例服务器
+
+[可运行的 Twilio 代码示例](https://github.com/openai/openai-agents-js/tree/main/examples/realtime-twilio)包含带身份验证的 Fastify 路由和 Realtime 会话设置。其 README 说明了服务器端必需的 `OPENAI_API_KEY`、`TWILIO_AUTH_TOKEN` 和 `TWILIO_PUBLIC_BASE_URL` 设置。公共基础 URL 必须是 HTTPS 源，不含路径前缀、查询字符串或片段。当隧道的公共源发生变化时，请更新此设置。
+
+服务器会在建立 Realtime 连接之前，拒绝签名无效的呼叫请求和升级请求。Twilio Media Stream URL 使用 `wss://`，不支持查询参数。有关自定义参数的信息，请参阅 [Twilio Stream 文档](https://www.twilio.com/docs/voice/twiml/stream)。

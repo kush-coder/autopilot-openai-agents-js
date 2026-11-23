@@ -1,0 +1,128 @@
+---
+title: 智能体记忆
+description: Preserve and reuse lessons from previous sandbox-agent runs.
+canonicalHeadingIds:
+  - depth: 2
+    id: 'enable-memory'
+    aliases:
+      - '记忆的启用'
+      - '记忆启用'
+  - depth: 2
+    id: 'read-memory'
+    aliases:
+      - '记忆读取'
+  - depth: 2
+    id: 'generate-memory'
+    aliases:
+      - '记忆生成'
+  - depth: 2
+    id: 'multi-turn-conversations'
+    aliases:
+      - '多轮对话'
+  - depth: 2
+    id: 'use-different-layouts-to-isolate-memory-for-different-agents'
+    aliases:
+      - '不同布局对不同智能体记忆的隔离'
+      - '不同智能体的记忆布局隔离'
+---
+
+import { Code } from '@astrojs/starlight/components';
+import conversationIdentityExample from '../../../../../../../examples/docs/sandbox-agents/conversation-identity.ts?raw';
+import enableMemoryExample from '../../../../../../../examples/docs/sandbox-agents/enable-memory.ts?raw';
+import generateMemoryExample from '../../../../../../../examples/docs/sandbox-agents/generate-memory.ts?raw';
+import memoryLayoutsExample from '../../../../../../../examples/docs/sandbox-agents/memory-layouts.ts?raw';
+import readOnlyMemoryExample from '../../../../../../../examples/docs/sandbox-agents/read-only-memory.ts?raw';
+
+记忆让后续的沙盒智能体运行能够从先前的运行中学习。它与 SDK 中用于存储消息历史的[会话](/openai-agents-js/zh/guides/sessions)记忆相互独立。记忆会将先前运行中的经验提炼为沙盒工作区中的文件，因此应将生成的记忆产物视为留存数据，并采用与工作区相同的敏感数据处理策略和保留策略。
+
+记忆可以降低后续运行的三类成本：
+
+1. 智能体成本：如果智能体花了很长时间才完成一个工作流，下次运行时应该就不需要进行那么多探索。这可以减少 token 用量和完成任务所需的时间。
+2. 用户成本：如果用户纠正了智能体或表达了偏好，后续运行可以记住这些反馈。这可以减少人工干预。
+3. 上下文成本：如果智能体之前已完成某项任务，而用户想在此基础上继续工作，用户就不应该需要查找之前的对话或重新输入所有上下文。这样可以让任务描述更简短。
+
+## 记忆启用
+
+将 `memory()` 作为一项能力添加到沙盒智能体中。
+
+<Code lang="typescript" code={enableMemoryExample} title="启用记忆" />
+
+如果启用了读取功能，`memory()` 就需要 `shell()`，以便在注入的摘要不足时，让智能体读取和搜索记忆文件。实时记忆更新功能默认启用，启用时还需要 `filesystem()`，以便在智能体发现记忆过时或用户要求更新记忆时，让智能体更新 `memories/MEMORY.md`。
+
+默认情况下，记忆产物存储在沙盒工作区的 `memories/` 目录下。要在后续运行中复用它们，请通过保持同一个活跃沙盒会话，或从持久化的会话状态或快照恢复，来保留并复用所配置的整个记忆目录；全新的空沙盒初始时没有任何记忆。
+
+`memory()` 会同时启用记忆读取和生成。对于应该读取记忆但不应生成新记忆的智能体，使用 `memory({ generate: false })`：例如，运行过程无法提供多少有价值信息的内部智能体、子智能体、检查智能体或一次性工具智能体。如果本次运行应生成记忆供以后使用，但用户不希望本次运行受到现有记忆的影响，则使用 `memory({ read: null })`。
+
+<Code lang="typescript" code={readOnlyMemoryExample} title="配置只读记忆" />
+
+## 记忆读取
+
+记忆读取采用渐进式披露。运行开始时，SDK 会将一份简短摘要（`memory_summary.md`）注入智能体的开发者提示中，其中包含通用技巧、用户偏好和可用记忆。这为智能体提供了足够的上下文，以判断先前的工作是否可能与当前任务相关。
+
+当先前的工作看起来相关时，智能体会使用当前任务中的关键词搜索所配置的记忆索引（`memoriesDir` 下的 `MEMORY.md`）。只有在任务需要更多细节时，它才会打开所配置的 `rollout_summaries/` 目录下对应的先前运行记录摘要。
+
+记忆可能会过时。智能体会被指示仅将记忆作为参考，并以当前环境为准。默认情况下，记忆读取启用了 `liveUpdate`，因此如果智能体发现记忆过时，可以在同一次运行中更新所配置的 `MEMORY.md`。如果智能体在运行期间应该读取记忆但不应修改记忆，例如运行对延迟敏感时，请禁用实时更新。
+
+## 记忆生成
+
+一次运行结束后，沙盒运行时会将该运行片段追加到一个对话文件中。累积的对话文件会在沙盒会话关闭时被处理。这些对话文件可能包含用户输入、助手和工具条目、中断以及最终输出，因此对于涉及敏感数据的工作负载，请使用适当的记忆存储和保留策略。
+
+记忆生成分为两个阶段：
+
+1. 阶段 1：对话提取。记忆生成模型处理一个累积的对话文件，并生成对话摘要。系统内容、开发者内容和推理内容会被省略。如果对话过长，会将其截断以适应上下文窗口，同时保留开头和结尾。该阶段还会生成一份原始记忆摘录：从对话中提取的精简笔记，供阶段 2 整合。
+2. 阶段 2：布局整合。整合智能体读取某个记忆布局的原始记忆，在需要更多依据时打开对话摘要，并从中提炼规律，写入 `MEMORY.md` 和 `memory_summary.md`。
+
+默认的工作区布局如下：
+
+```text
+workspace/
+├── sessions/
+│   └── <rollout-id>.jsonl
+└── memories/
+    ├── memory_summary.md
+    ├── MEMORY.md
+    ├── raw_memories.md
+    ├── raw_memories/
+    └── rollout_summaries/
+```
+
+你可以通过 `memory({ generate: ... })` 配置记忆生成：
+
+<Code lang="typescript" code={generateMemoryExample} title="配置记忆生成" />
+
+使用 `extraPrompt` 告诉记忆生成器哪些信息对你的用例最重要，例如 GTM 智能体所需的客户和公司详细信息。
+
+如果近期的原始记忆数量超过 `maxRawMemoriesForConsolidation`，阶段 2 只会保留最新对话中的记忆，并删除较旧的记忆。新旧程度依据对话的最后更新时间确定。这种遗忘机制有助于让记忆反映最新的环境。
+
+## 多轮对话
+
+对于多轮沙盒聊天，请将常规的 SDK `Session` 与同一个活跃沙盒会话搭配使用：
+
+<Code
+  lang="typescript"
+  code={conversationIdentityExample}
+  title="将一个 SDK 会话与一个沙盒会话搭配使用"
+/>
+
+两次运行都会追加到同一个记忆对话文件中，因为它们传入了同一个 SDK 对话会话，因此共享同一个会话 ID。这与沙盒不同，沙盒用于标识活跃的工作区，不用作记忆对话 ID。阶段 1 会在沙盒会话关闭时读取累积的对话，因此可以从整个交流过程中提取记忆，而不是从两个孤立的轮次中分别提取。
+
+如果你希望将多次 `run(...)` 调用合并为一个记忆对话，请在这些调用中传入一致的标识符。记忆功能将运行关联到对话时，会按以下顺序确定标识符：
+
+1. `conversationId`，如果你向 `run(...)` 传入了该参数。
+2. SDK `session` ID，如果你传入了 SDK `Session`。
+3. `groupId`，如果前两者都不存在。
+4. 为每次运行生成的 ID，如果不存在稳定的标识符。
+
+## 不同智能体的记忆布局隔离
+
+记忆隔离基于 `MemoryLayoutConfig`，而非智能体名称。使用相同布局和相同记忆对话 ID 的智能体会共享一个记忆对话和一份整合后的记忆。使用不同布局的智能体会保留各自独立的运行记录文件、原始记忆、`MEMORY.md` 和 `memory_summary.md`，即使它们共享同一个沙盒工作区也是如此。
+
+当多个智能体共享一个沙盒但不应共享记忆时，请使用独立的布局：
+
+<Code
+  lang="typescript"
+  code={memoryLayoutsExample}
+  title="使用独立的记忆布局"
+/>
+
+这样可以防止一个领域的分析被整合到另一个领域的记忆中，反之亦然。

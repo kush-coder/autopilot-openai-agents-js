@@ -1,0 +1,278 @@
+---
+title: サンドボックスクライアント
+description: Choose where sandbox work should run and how sessions, snapshots, mounts, and ports behave.
+canonicalHeadingIds:
+  - depth: 2
+    id: 'decision-guide'
+    aliases:
+      - '選択ガイド'
+  - depth: 2
+    id: 'local-clients'
+    aliases:
+      - 'ローカルクライアント'
+  - depth: 3
+    id: 'session-ownership'
+    aliases:
+      - 'セッションの所有権'
+  - depth: 3
+    id: 'resume-and-snapshots'
+    aliases:
+      - '再開とスナップショット'
+  - depth: 3
+    id: 'manifest-materialization'
+    aliases:
+      - 'マニフェストの実体化'
+  - depth: 3
+    id: 'filesystem-existence-checks'
+    aliases:
+      - 'ファイルシステムの存在確認'
+  - depth: 2
+    id: 'mounts-and-remote-storage'
+    aliases:
+      - 'マウントとリモートストレージ'
+  - depth: 2
+    id: 'supported-hosted-platforms'
+    aliases:
+      - 'サポート対象のホステッドプラットフォーム'
+      - '対応ホステッドプラットフォーム'
+      - 'サポートされるホステッドプラットフォーム'
+      - 'サポート対象のホスト型プラットフォーム'
+  - depth: 3
+    id: 'exposed-ports'
+    aliases:
+      - '公開ポート'
+  - depth: 3
+    id: 'capability-support-matrix'
+    aliases:
+      - '機能サポートマトリクス'
+      - '機能サポートマトリックス'
+      - '機能のサポートマトリックス'
+      - '機能サポート一覧'
+---
+
+import { Code } from '@astrojs/starlight/components';
+import developerOwnedSessionExample from '../../../../../../../examples/docs/sandbox-agents/developer-owned-session.ts?raw';
+import dockerClientExample from '../../../../../../../examples/docs/sandbox-agents/docker-client.ts?raw';
+import exposedPortsExample from '../../../../../../../examples/docs/sandbox-agents/exposed-ports.ts?raw';
+import manifestConcurrencyExample from '../../../../../../../examples/docs/sandbox-agents/manifest-concurrency.ts?raw';
+import resumeSessionStateExample from '../../../../../../../examples/docs/sandbox-agents/resume-session-state.ts?raw';
+import selectLocalClientExample from '../../../../../../../examples/docs/sandbox-agents/select-local-client.ts?raw';
+
+このページでは、サンドボックスでの処理をどこで実行するかを選択します。ほとんどの場合、`SandboxAgent` の定義はそのままで、`sandbox` 実行オプション内のサンドボックスクライアントとクライアント固有のオプションを変更します。
+
+## 選択ガイド
+
+| 目的 | 最初の選択肢 | 理由 |
+| --- | --- | --- |
+| macOS または Linux での信頼できるローカル開発 | `UnixLocalSandboxClient` | 管理されたワークスペースでホストプロセスを実行します。OS レベルの隔離は追加しません。 |
+| 基本的なコンテナ隔離 | `DockerSandboxClient` | 特定のイメージを使って Docker 内で処理を実行します。 |
+| ホスト型環境での実行 | ホスト型サンドボックスクライアント | プロバイダーが管理する環境を使用します。隔離の程度はプロバイダーと設定によって異なります。 |
+
+## ローカルクライアント
+
+ほとんどのユーザーは、次の 2 つのサンドボックスクライアントのいずれかから始めてください。
+
+| クライアント | インストール | 選択する場面 |
+| --- | --- | --- |
+| `UnixLocalSandboxClient` | 不要 | macOS または Linux での信頼できるローカル開発、または外部で隔離された環境内での実行。 |
+| `DockerSandboxClient` | ローカルで Docker CLI が利用可能であること | コンテナ隔離が必要な場合や、ローカルで環境を揃えるために特定のイメージが必要な場合。 |
+
+`UnixLocalSandboxClient` は、macOS と Linux の両方で、PTY を使用するコマンドを含むシェルコマンドをホストプロセスとして実行します。このクライアントは、OS レベルのファイルシステム隔離やネットワーク隔離を追加しません。コマンドは選択されたホストユーザーの権限で実行され、外部で適用される隔離の制約を受けます。ワークスペースディレクトリ、コマンドの作業ディレクトリ、`HOME` 環境変数は、コマンドをワークスペース内に制限するものではありません。
+
+新しい Unix-local セッションごとに、個別の一時ワークスペースが割り当てられます。`Manifest.root` は論理パスで、`workspaceBaseDir` は一時ワークスペースの親ディレクトリを指定します。どちらの設定でも、同じ値を使用しただけでは、新しく作成されたセッション間でワークスペースが共有されることはありません。稼働中のセッションを再利用すると、そのセッションのワークスペースが共有されます。Unix-local のセッションやワークスペースを分けても、OS の隔離境界は確立されません。
+
+Unix-local のパス許可は、サポート対象のホスト側ソースへのアクセスと SDK のファイル API を制限します。`readOnly` の許可は、許可対象パスへの SDK ファイル API による書き込みを防ぎますが、任意のシェルコマンドを制限するものではありません。パス許可がなくても、コマンドはプロセスの権限と外部の隔離によって許されるホストパスにアクセスできます。[マニフェストのパス許可](/openai-agents-js/ja/guides/sandbox-agents/concepts#manifest)を参照してください。
+
+信頼できない入力の影響を受けるコマンドを含め、信頼できないコマンドを実行する場合は、適切に設定された `DockerSandboxClient` またはホスト型バックエンドを選択するか、外部で隔離を提供してください。アプリケーションに必要なファイルシステム、ネットワーク、プロセスの隔離に合わせて、バックエンドと設定を選択してください。
+
+Unix-local から Docker に切り替えるには、エージェントの定義をそのままにして、クライアントだけを変更します。
+
+<Code lang="typescript" code={dockerClientExample} title="Docker の使用" />
+
+通常、同じエージェントをどちらのローカルクライアントでも実行できます。
+
+<Code
+  lang="typescript"
+  code={selectLocalClientExample}
+  title="ローカルクライアント間の切り替え"
+/>
+
+`DockerSandboxClient` は、クライアントのコンストラクターまたは実行ごとの `sandbox.options` で `networkMode: 'none'` を設定しない限り、Docker のデフォルトのネットワークを使用します。`'none'` モードでは、ネットワークを無効にしてコンテナを起動します。このモードは `exposedPorts` と併用できません。SDK は、コンテナを作成または再開する前に、その設定を拒否します。現在、`networkMode` に明示的に指定できる値は、これ以外にはサポートされていません。
+
+作成されるコンテナにユーザー定義ラベルを適用するには、`DockerSandboxClient` のコンストラクターまたは実行ごとの `sandbox.options` に `labels: Record<string, string>` を設定します。実行ごとの `labels` レコードは、コンストラクターのレコードとマージされず、置き換えます。SDK は文字列以外の値を拒否し、`openai-agents-sandbox`、`openai-agents-sandbox.session-identity`、`openai-agents-sandbox.mount-authority-fingerprint` を自身の所有権チェック用に予約しています。
+
+SDK は、ユーザー定義ラベルをシリアライズされた Docker セッション状態にコピーします。その状態を明示的に再開する場合、呼び出し元が指定するラベルは、永続化されたラベルレコードと完全に一致する必要があります。変更するには、新しいサンドボックスセッションを開始してください。稼働中のコンテナを再利用する際にも、設定されたすべてのラベルが引き続き必要な値を持つことを検証します。SDK の外部で追加された無関係なラベルは、再利用を妨げません。
+
+### セッションの所有権
+
+ライフサイクルには 2 つの形式があります。
+
+| 形式 | 渡すもの | セッションを閉じる主体 | 使用する場面 |
+| --- | --- | --- | --- |
+| SDK 所有 | `sandbox: { client }` | ランナー | サンドボックスが 1 回の実行中だけ存続すればよい場合。 |
+| 開発者所有 | `sandbox: { session }` | 自分のコード | 後からファイルを確認したり、同じ稼働中のセッションを再利用したり、複数の実行を調整したりする必要がある場合。 |
+
+正常終了時または失敗時には、ランナーが SDK 所有のセッションを閉じます。承認待ちの割り込みによって実行が一時停止した場合や、未完了のストリーミング実行がキャンセルされた場合、ランナーはセッションを閉じる代わりに、所有するサンドボックスの状態を `RunState` に保持し、同じ実行を継続できるようにします。
+
+自分でセッションを作成した場合は、自分で閉じてください。
+
+<Code
+  lang="typescript"
+  code={developerOwnedSessionExample}
+  title="サンドボックスセッションのライフサイクルの管理"
+/>
+
+### 再開とスナップショット
+
+サンドボックスの状態と会話の状態は別のものです。
+
+- SDK の会話状態は、`result.history`、SDK の `Session`、`conversationId`、または `previousResponseId` に保持されます。
+- サンドボックスの状態は、稼働中のサンドボックスセッション、シリアライズされた `sessionState`、`RunState` のサンドボックスペイロード、またはスナップショットに保持されます。
+
+サンドボックスクライアントを通じて同じバックエンドセッションに再接続したい場合は、`sessionState` を使用します。保存されたワークスペースの内容を初期状態とする新しいセッションが必要な場合は、スナップショットを使用します。
+
+<Code
+  lang="typescript"
+  code={resumeSessionStateExample}
+  title="サンドボックス状態のシリアライズと再開"
+/>
+
+`RunState` は、より大きなワークフローを一時停止または再開する際にも、ランナーが管理するサンドボックスの状態を保持できます。サンドボックスのライフサイクルを、シリアライズされた実行の外部で管理する場合は、明示的な `sessionState` を使用してください。
+
+Docker では、メモリ内の同じ `RunState` を再開する場合、SDK がコンテナの ID を検証し、現在のマニフェスト、環境、パス許可を再検証した後に限り、稼働中のコンテナを再利用できます。稼働中のコンテナの再利用が利用できない、または拒否された場合、Docker は復元可能なスナップショットにフォールバックします。シリアライズされて `RunState.fromString(...)` で再構築された `RunState` は、信頼済みのライブコンテナへの接続権限を保持しないため、この場合も Docker は、シリアライズされたコンテナ ID に接続する代わりに、スナップショットから復元します。復元可能なスナップショットが設定されていない場合、未検証のコンテナに接続するのではなく、再開が失敗します。
+
+`baseDir` が明示的に指定されていないローカルスナップショットでは、`OPENAI_AGENTS_SANDBOX_SNAPSHOT_DIR` を設定すると保存先ディレクトリを上書きできます。それ以外の場合、SDK は macOS では `~/Library/Application Support/openai-agents-js/sandbox-snapshots`、Windows では `%LOCALAPPDATA%\openai-agents-js\sandbox-snapshots`、その他のプラットフォームでは `$XDG_STATE_HOME/openai-agents-js/sandbox-snapshots` を使用し、これらの場所を利用できない場合はホームディレクトリや一時ディレクトリにフォールバックします。
+
+### マニフェストの実体化
+
+マニフェストのエントリーは、エージェントの実行前に準備されます。実体化の同時実行数は、実行ごと、またはクライアントの create 呼び出しごとに調整できます。
+
+<Code
+  lang="typescript"
+  code={manifestConcurrencyExample}
+  title="マニフェストの実体化の同時実行数の調整"
+/>
+
+`manifestEntries` は、トップレベルのエントリー処理の並列数を制限します。`localDirFiles` は、`localDir()` エントリー内のファイルコピーの同時実行数を制限します。
+
+### ファイルシステムの存在確認
+
+セッションが `pathExists()` を実装している場合、`false` は、バックエンドがそのパスの不在を確認したことを意味します。権限エラー、I/O 障害、プロバイダーによる確認処理の失敗は、パスの不在として扱われず、プロバイダーエラーでリジェクトされます。これにより、エディター、マニフェスト、メモリの処理が、存在する可能性はあるもののアクセスできないパスを上書きしたり置き換えたりするのを防ぎます。
+
+## マウントとリモートストレージ
+
+マウントエントリーは、どのストレージを公開するかを記述します。マウントストラテジーは、サンドボックスのバックエンドがそのストレージをどのように接続するかを記述します。組み込みのマウントエントリーと汎用ストラテジーは、`@openai/agents/sandbox` からインポートします。
+
+共通のマウントオプション：
+
+- `mountPath`：サンドボックス内でストレージが表示される場所です。相対パスはマニフェストのルート配下で解決され、絶対パスはそのまま使用されます。
+- `readOnly`：サンドボックスからマウントされたストレージへの書き戻しを禁止する場合に設定します。
+- `mountStrategy`：マウントエントリーとサンドボックスのバックエンドの両方に適合するストラテジーを使用します。
+
+マウントは一時的なワークスペースエントリーとして扱われます。スナップショットと永続化の処理では、マウントされたリモートストレージを保存対象のワークスペースにコピーするのではなく、マウントされたパスを切り離すかスキップします。
+
+汎用のローカル／コンテナ用ストラテジー：
+
+| ストラテジーまたはパターン | 使用する場面 | 備考 |
+| --- | --- | --- |
+| `inContainerMountStrategy(...)` | サンドボックスのイメージで `rclone`、`mount-s3`、`blobfuse2` などのマウントコマンドを実行できる場合。 | 汎用ストラテジーとして利用できます。サポート状況はバックエンドによって異なります。 |
+| `dockerVolumeMountStrategy(...)` | コンテナの起動前に、Docker がボリュームドライバーを使用したマウントを接続する必要がある場合。 | Docker 専用です。 |
+| `localBindMountStrategy()` | ローカルバックエンドが絶対ローカルパスをワークスペースにバインドする必要がある場合。 | 許可されている場合に、ローカルワークスペースの実体化でサポートされます。 |
+
+バックエンドのサポート範囲は、意図的に明示されています。
+
+| バックエンド | マウントに関する備考 |
+| --- | --- |
+| `UnixLocalSandboxClient` | ローカルワークスペースモデルを通じて、ローカルのバインド形式のマウントをサポートします。 |
+| `DockerSandboxClient` | Docker がストレージを接続できる場合に、ローカルのバインドマウントと Docker ボリューム形式のストラテジーをサポートします。 |
+| ホスト型プロバイダー | プロバイダー固有のストラテジーは、各プロバイダーの実装に含まれます。サポートされるマウントと必要な設定については、そのプロバイダーのドキュメントを確認してください。 |
+
+マウントエントリーがすべてのバックエンドで動作すると想定しないでください。クライアントがマニフェストのメタデータ、ID、またはマウント動作を強制できない場合は、マニフェストのその部分を黙って無視するのではなく、早い段階で失敗すべきです。
+
+## サポート対象のホスト型プラットフォーム
+
+ホスト型環境が必要な場合も、通常は同じ `SandboxAgent` の定義を引き続き使用でき、`sandbox` 実行オプション内のサンドボックスクライアントだけを変更します。
+
+ホスト型プロバイダーの実装は、`@openai/agents-extensions` のプロバイダー別サブパスから利用できます。正確な環境変数、実行可能なコード例、ポートの動作、PTY のサポート、スナップショットの動作、クリーンアップの動作については、プロバイダーのドキュメントを確認してください。
+
+`@openai/agents-extensions` をインストールし、パッケージレベルのピア依存関係を満たしてください。プロバイダーによっては、プロバイダーの SDK パッケージやバックエンドの設定も必要です。
+
+| クライアント | インポートパス | プロバイダーの要件 |
+| --- | --- | --- |
+| `BlaxelSandboxClient` | `@openai/agents-extensions/sandbox/blaxel` | npm ピア依存：`@blaxel/core` |
+| `CloudflareSandboxClient` | `@openai/agents-extensions/sandbox/cloudflare` | Cloudflare Sandbox ブリッジ Worker の URL と Worker 認証 |
+| `DaytonaSandboxClient` | `@openai/agents-extensions/sandbox/daytona` | npm ピア依存：`@daytonaio/sdk` |
+| `E2BSandboxClient` | `@openai/agents-extensions/sandbox/e2b` | npm ピア依存：`e2b` または `@e2b/code-interpreter` |
+| `ModalSandboxClient` | `@openai/agents-extensions/sandbox/modal` | npm ピア依存：`modal` |
+| `VercelSandboxClient` | `@openai/agents-extensions/sandbox/vercel` | npm ピア依存：`@vercel/sandbox` |
+
+`ModalSandboxClient` がサンドボックスを作成する際は、`cpu` と `memoryMiB` を使用して CPU とメモリの予約量をリクエストします。上限を設定するには、`cpuLimit` と `memoryLimitMiB` を使用します。これらのオプションは、クライアントのコンストラクターまたは実行ごとの `sandbox.options` に設定できます。実行ごとの値は、コンストラクターのデフォルト値を上書きします。すべての値は正の有限数である必要があります。`cpuLimit` には `cpu` が必要で、その値を下回ることはできません。同様に、`memoryLimitMiB` には `memoryMiB` が必要で、その値を下回ることはできません。
+
+`CloudflareSandboxClient` は、Cloudflare の npm SDK をインポートしません。代わりに、デプロイされた Cloudflare Sandbox ブリッジ Worker と HTTP 経由で通信します。
+
+`VercelSandboxClient` は、PAT 認証情報の各フィールドを、作成ごとのオプション、コンストラクターのオプション、最後に `VERCEL_PROJECT_ID`、`VERCEL_TEAM_ID`、`VERCEL_TOKEN` という優先順位で解決します。解決後の `projectId`、`teamId`、`token` がすべて空でない場合にのみ、認証情報を渡します。それ以外の場合は 3 つのフィールドすべてを省略し、プラットフォームの OIDC やローカルのプロバイダー認証情報を含む認証の解決を `@vercel/sandbox` に委ねます。解決済みの完全な認証情報は、セッションをシリアライズして再開する際にも保持されます。シリアライズされた認証情報は、3 つのフィールドの完全な組として扱われ、現在のオプションや環境変数と混在させることはありません。不完全なシリアライズ済み認証情報は破棄され、その後、フォールバックとして現在の設定が解決されます。シリアライズされたセッション状態にはトークンが残るため、その状態は安全に保存してください。
+
+ホスト型サンドボックスクライアントは、プロバイダー固有のマウントストラテジーを公開しています。ストレージプロバイダーに最も適したバックエンドとマウントストラテジーを選択してください。
+
+サンドボックス内でヘルパーを実行する、認証情報を伴うマウントは、デフォルトで拒否されます。モデルが制御するコードが、そのヘルパープロセスの認証情報にアクセスできるためです。これには、サポートされるマウントフィールド、環境に存在する AWS または GCP の環境変数、`RCLONE_CONFIG_*` の値、ワークロード ID またはマネージド ID の検出を通じて提供される認証情報が含まれます。認証情報を使用しない rclone および mountpoint ヘルパーは、環境やメタデータによる認証を無効にし、バックエンドがサポートする場合は匿名アクセスを使用します。Docker ボリューム、Modal クラウドバケット、Cloudflare バケットマウントなど、外部またはプロバイダーネイティブのストラテジーを優先してください。
+
+サンドボックス内のヘルパーが必要な場合は、アプリケーションが作成したマニフェスト上で、信頼する各実効マウントパスについて認証情報の露出を承認してください。型付きマウントフィールドを通じて直接提供される、マウントにスコープが限定された認証情報には、`manifest.withInContainerMountCredentialExposureAcknowledged('mounted/path')` が返すマニフェストを使用します。環境内の認証情報、ワークロード ID またはマネージド ID、外部の認証情報ファイルや設定ファイルには、`manifest.withInContainerMountBroadCredentialExposureAcknowledged('mounted/path')` が返すマニフェストが必要です。両方の種類の権限を使用するマウントには、両方の承認が必要です。完全一致のパスに対するこれらの承認はランタイム限定であり、マニフェストの初期化オブジェクトやシリアライズされたマニフェストデータから受け付けられることはありません。これらの承認は、選択したヘルパーへの認証情報の受け渡しを許可するものであり、認証情報をそのマウントパス内に閉じ込めるものではありません。そのため、同じサンドボックス内でモデルが制御する他のコードも、その認証情報を取得できる可能性があります。サンドボックスにスコープを限定した、有効期間の短い最小権限の認証情報を使用してください。
+
+マウントが参照する認証情報ファイルの解決先は、直接参照でもシンボリックリンク経由でも、シリアライズ可能なマニフェストエントリーであってはなりません。動的なマニフェストの変更は、セッションごとに逐次実行されます。プロバイダー側で変更が始まった可能性がある段階で、権限を伴うマウントの遷移や、置き換えのためのアンマウントが失敗した場合、SDK は曖昧な状態を再利用または永続化するのではなく、そのセッションを無効化して終了します。
+
+シリアライズされたサンドボックス状態には、サンドボックス内のマウントヘルパーが選択した環境内の認証情報を含め、マウントの認証情報は含まれません。永続化されたマウントトポロジーを再開するには、必ず現在の信頼できるマニフェストが必要です。再開可能な外部マウントまたはプロバイダーネイティブのマウントでは、SDK は、認証情報を除いた現在のマウントトポロジーと永続化されたマウントトポロジーが一致した後にのみ、認証情報を復元します。明示的な `sessionState` で既存のプロバイダーネイティブのマウントに再接続できるのは、マスキングされていないライブの権限情報が、現在の信頼できるマニフェストと引き続き一致している場合に限られます。権限情報がマスキング、ローテーション、または削除されている場合は、新しいサンドボックスが必要です。認証情報を含まないトポロジーを分離できない不透明な設定は、再開できません。Runner が、サンドボックス内のマウントヘルパーを使用していたシリアライズ済みの `RunState` エントリーを復元する場合、保存されたセッションを破棄し、現在の信頼できる設定から新しいサンドボックスを作成します。一方、呼び出し元が明示的に指定する `sessionState` と、プロバイダーでの直接の再開では、コンテナ内マウントの状態が拒否されます。新しいサンドボックスを明示的に開始してください。
+
+| バックエンド | マウントに関する備考 |
+| --- | --- |
+| Docker | `inContainerMountStrategy()` や `dockerVolumeMountStrategy()` などのローカルストラテジーを使って、`s3Mount()`、`gcsMount()`、`r2Mount()`、`azureBlobMount()`、`boxMount()`、`s3FilesMount()` をサポートします。 |
+| `ModalSandboxClient` | S3、R2、HMAC 認証の GCS マウントエントリーで、`ModalCloudBucketMountStrategy` によるクラウドバケットマウントをサポートします。 |
+| `CloudflareSandboxClient` | S3、R2、HMAC 認証の GCS マウントエントリーで、`CloudflareBucketMountStrategy` による Cloudflare バケットマウントをサポートします。 |
+| `BlaxelSandboxClient` | S3、R2、GCS マウントエントリーで、`BlaxelCloudBucketMountStrategy` によるクラウドバケットマウントをサポートします。認証情報を伴うクラウドマウントには、SDK 所有のサンドボックスが必要です。SDK が所有していない名前付きサンドボックスを再利用する場合は、認証情報を使用しないクラウドマウント、または `BlaxelDriveMount` と `BlaxelDriveMountStrategy` による永続的な Blaxel Drives を使用できます。 |
+| `DaytonaSandboxClient` | S3、GCS、R2、Azure Blob、Box マウントエントリーで、`DaytonaCloudBucketMountStrategy` による rclone ベースのマウントをサポートします。 |
+| `E2BSandboxClient` | S3、GCS、R2、Azure Blob、Box マウントエントリーで、`E2BCloudBucketMountStrategy` による rclone ベースのマウントをサポートします。 |
+| `VercelSandboxClient` | `VercelCloudBucketMountStrategy` による、作成時の S3 マウントをサポートします。新しいコードでは、完全一致する各マウントパスについて、`withInContainerMountCredentialExposureAcknowledged()` でインライン認証情報の露出を承認してください。非推奨の `allowS3CredentialExposure: true` オプションは、既存リリースのインライン S3 認証情報設定との互換性のため、引き続き受け付けられますが、環境内の認証情報やその他の広範な権限を許可するものではありません。シリアライズされたマウント状態を直接再開することはできないため、マウント済みの稼働中のセッションを再利用してください。 |
+
+E2B の rclone ベースのマウントでは、既存の `rclone` バイナリが利用可能な場合、SDK はそれを使用します。それ以外の場合は、SHA-256 チェックサムを検証した後にのみ、SDK がバージョンを固定した Linux アーカイブをインストールします。サポートされていないアーキテクチャやチェックサムの検証失敗があると、マウントを中止します。
+
+次の表は、各バックエンドが直接マウントできるリモートストレージエントリーをまとめたものです。
+
+| バックエンド | AWS S3 | Cloudflare R2 | GCS | Azure Blob Storage | Box | S3 Files |
+| --- | --- | --- | --- | --- | --- | --- |
+| Docker | はい | はい | はい | はい | はい | はい |
+| `ModalSandboxClient` | はい | はい | はい | いいえ | いいえ | いいえ |
+| `CloudflareSandboxClient` | はい | はい | はい | いいえ | いいえ | いいえ |
+| `BlaxelSandboxClient` | はい | はい | はい | いいえ | いいえ | いいえ |
+| `DaytonaSandboxClient` | はい | はい | はい | はい | はい | いいえ |
+| `E2BSandboxClient` | はい | はい | はい | はい | はい | いいえ |
+| `VercelSandboxClient` | はい | いいえ | いいえ | いいえ | いいえ | いいえ |
+
+「はい」は、そのバックエンドが該当するストレージのマウント形式を実行できることを意味します。上で説明した認証情報の境界を回避するものではありません。Docker の `dockerVolumeMountStrategy()`、Modal のクラウドバケットマウント、Cloudflare のバケットマウントは、マウントの認証情報を、モデルが制御するサンドボックスの外部に保持します。Docker の `inContainerMountStrategy()` と、Daytona および E2B の rclone ストラテジーは、認証情報を受け取る場合、必ず完全一致のパスに対する承認を必要とします。Box マウントには認証が必要なため、Box の権限情報が型付きマウントフィールドを通じて提供されるか、外部の認証情報ファイルや設定ファイルを通じて提供されるかに応じて、適切な承認を選択してください。Docker の S3 Files マウントは広範なワークロード ID を使用するため、`withInContainerMountBroadCredentialExposureAcknowledged()` が必要です。
+
+### 公開ポート
+
+サンドボックスクライアントは、バックエンドがサポートしている場合、`resolveExposedPort(port)` を通じてエンドポイントを公開できます。
+
+| クライアント | 動作 |
+| --- | --- |
+| `UnixLocalSandboxClient` | 設定されたポートの接続先を `127.0.0.1` として解決します。 |
+| `DockerSandboxClient` | 設定されたコンテナポートを公開し、ホスト側のエンドポイントを解決します。 |
+
+バックエンドで許可リストを強制する必要がある場合は、クライアントオプションでポートを宣言してください。
+
+<Code lang="typescript" code={exposedPortsExample} title="ポートの公開" />
+
+### 機能サポート一覧
+
+| 機能 | Unix-local | Docker |
+| --- | --- | --- |
+| `exec_command` | サポート | サポート |
+| PTY `write_stdin` | サポート | サポート |
+| `apply_patch` | サポート | ワークスペースのファイル API を通じてサポート |
+| `view_image` | サポート | ワークスペースのファイル API を通じてサポート |
+| コマンドの `runAs` | ホストがユーザーを解決し、そのユーザーに切り替えられる場合にサポート | コンテナ／ユーザーの設定による制限あり |
+| ローカルスナップショット | サポート | サポート |
+| ローカル／Docker マウント | ローカルのバインド形式をサポート | バインド形式と Docker ボリューム形式をサポート |
+
+ローカルの PTY サポートは、SDK プロセス内の小さな Python 3 ブリッジを使用します。このブリッジは、`tty: true` のセッションでのみ使用されます。Node.js が組み込みの PTY API を提供しておらず、SDK が対話的な標準入力、シグナル処理、終了ステータスの報告のために標準的な POSIX PTY の動作を必要とするためです。SDK コードを実行する環境に `python3` をインストールするか、`OPENAI_AGENTS_PYTHON` に Python 3 の実行ファイルを設定してください。これは、Docker サンドボックスのイメージ内に Python がインストールされている場合でも、そのバージョンとは別のものです。
+
+ホスト型プロバイダーのサポート状況は、プロバイダーによって異なります。正確なオプション、環境変数、ポートの動作、PTY のサポート、スナップショットの動作、クリーンアップの動作については、プロバイダー固有のドキュメントを確認してください。

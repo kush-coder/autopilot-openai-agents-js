@@ -1,0 +1,569 @@
+---
+title: テスト
+description: Cookbook and API cheat sheet for deterministic Agent, sandbox, and Realtime tests
+canonicalHeadingIds:
+  - depth: 2
+    id: 'find-the-recipe-you-need'
+    aliases:
+      - '必要なレシピ'
+      - '必要なレシピの選択'
+  - depth: 2
+    id: 'imports'
+    aliases:
+      - 'インポート'
+  - depth: 2
+    id: 'agent-workflow-recipes'
+    aliases:
+      - 'エージェントワークフローのレシピ'
+  - depth: 3
+    id: 'return-a-fixed-response'
+    aliases:
+      - '固定レスポンスの返却'
+  - depth: 3
+    id: 'test-a-tool-workflow'
+    aliases:
+      - 'ツールワークフローのテスト'
+  - depth: 3
+    id: 'derive-a-response-from-the-request'
+    aliases:
+      - 'リクエストからのレスポンス導出'
+      - 'リクエストに基づくレスポンスの生成'
+  - depth: 3
+    id: 'inspect-model-calls'
+    aliases:
+      - 'モデル呼び出しの確認'
+  - depth: 3
+    id: 'test-streaming'
+    aliases:
+      - 'ストリーミングのテスト'
+  - depth: 3
+    id: 'inject-model-failures'
+    aliases:
+      - 'モデル失敗の注入'
+      - 'モデルの失敗の注入'
+  - depth: 3
+    id: 'detect-workflow-drift'
+    aliases:
+      - 'ワークフロードリフトの検出'
+      - 'ワークフローの意図しない変化の検出'
+  - depth: 2
+    id: 'sandbox-agent-recipes'
+    aliases:
+      - 'サンドボックスエージェントのレシピ'
+  - depth: 3
+    id: 'test-a-sandbox-agent-workflow'
+    aliases:
+      - 'サンドボックスエージェントワークフローのテスト'
+  - depth: 3
+    id: 'configure-sandbox-steps'
+    aliases:
+      - 'サンドボックスステップの設定'
+  - depth: 2
+    id: 'voice-agent-and-session-recipes'
+    aliases:
+      - 'realtime-agent-and-session-recipes'
+      - 'realtime-エージェントとセッションのレシピ'
+      - '音声エージェントとセッションのレシピ'
+  - depth: 3
+    id: 'test-a-voice-agent-tool-workflow'
+    aliases:
+      - 'test-a-realtime-agent-tool-workflow'
+      - 'realtime-エージェントのツールワークフローのテスト'
+      - '音声エージェントのツールワークフローのテスト'
+  - depth: 3
+    id: 'test-a-realtime-session'
+    aliases:
+      - 'realtime-セッションのテスト'
+  - depth: 3
+    id: 'test-interruption'
+    aliases:
+      - '割り込みのテスト'
+      - '中断のテスト'
+  - depth: 3
+    id: 'inject-a-realtime-failure'
+    aliases:
+      - 'realtime-失敗の注入'
+      - 'realtime-の失敗の注入'
+  - depth: 3
+    id: 'test-a-remote-disconnect'
+    aliases:
+      - 'リモート切断のテスト'
+      - 'リモート側からの切断のテスト'
+  - depth: 3
+    id: 'inspect-realtime-calls'
+    aliases:
+      - 'realtime-呼び出しの確認'
+  - depth: 3
+    id: 'verify-completion-and-cleanup'
+    aliases:
+      - '完了とクリーンアップの検証'
+  - depth: 2
+    id: 'api-cheat-sheet'
+    aliases:
+      - 'api-早見表'
+  - depth: 3
+    id: 'model-step-factories'
+    aliases:
+      - 'モデルステップファクトリー'
+      - 'モデルステップのファクトリー'
+  - depth: 3
+    id: 'common-output-helpers'
+    aliases:
+      - '一般的な出力ヘルパー'
+      - '共通の出力ヘルパー'
+  - depth: 3
+    id: 'sandbox-session-controls'
+    aliases:
+      - 'サンドボックスセッションの制御'
+  - depth: 3
+    id: 'realtime-controls'
+    aliases:
+      - 'realtime-の制御'
+  - depth: 2
+    id: 'choose-the-correct-boundary'
+    aliases:
+      - '正しい境界の選択'
+      - '適切な境界の選択'
+  - depth: 2
+    id: 'final-checklist'
+    aliases:
+      - '最終チェックリスト'
+  - depth: 2
+    id: 'related-guides'
+    aliases:
+      - '関連ガイド'
+  - depth: 2
+    id: 'scope-and-current-limitations'
+    aliases:
+      - '適用範囲と現在の制限事項'
+      - '対象範囲と現在の制限'
+  - depth: 3
+    id: 'deliberately-outside-the-testing-module'
+    aliases:
+      - 'テストモジュールの意図的な対象外'
+      - '意図的にテストモジュールの対象外としているもの'
+  - depth: 3
+    id: 'not-currently-provided'
+    aliases:
+      - '現在提供されていない機能'
+      - '現在提供されていないもの'
+---
+
+import { Aside, Code } from '@astrojs/starlight/components';
+import fixedResponseExample from '../../../../../../examples/docs/testing/fixedResponse.ts?raw';
+import toolWorkflowExample from '../../../../../../examples/docs/testing/toolWorkflow.ts?raw';
+import requestAwareResponseExample from '../../../../../../examples/docs/testing/requestAwareResponse.ts?raw';
+import workflowDriftExample from '../../../../../../examples/docs/testing/workflowDrift.ts?raw';
+import sandboxWorkflowExample from '../../../../../../examples/docs/testing/sandboxWorkflow.ts?raw';
+import realtimeAgentToolExample from '../../../../../../examples/docs/testing/realtimeAgentTool.ts?raw';
+import realtimeScenarioExample from '../../../../../../examples/docs/testing/realtimeScenario.ts?raw';
+import realtimeInterruptExample from '../../../../../../examples/docs/testing/realtimeInterrupt.ts?raw';
+import realtimeFailureExample from '../../../../../../examples/docs/testing/realtimeFailure.ts?raw';
+
+SDK は、エージェントワークフロー、サンドボックスセッション、Realtime セッション向けに、決定的でプロバイダーに依存しないテストダブルを提供します。これらはメモリ内で動作し、モデル、サンドボックスプロバイダー、Realtime APIへのリクエストを行わず、SDK が管理する正規化されたやり取りを記録します。
+
+<Aside type="note" title="完全にオフラインのテストでのトレーシングの無効化">
+  スクリプトで定義するユーティリティは、モデル、サンドボックスプロバイダー、Realtime
+  APIの I/O を置き換えます。 トレーシングは SDK
+  の別の境界であり、テスト環境で無効にしない限り、
+  実行データがエクスポートされる可能性があります。このページのコード例では、`new
+  Runner(...)` に `tracingDisabled: true`
+  を渡しています。代わりに、`NODE_ENV=test` や `OPENAI_AGENTS_DISABLE_TRACING=1`
+  を設定するか、テストのセットアップ時に `setTracingDisabled(true)`
+  を一度呼び出すこともできます。
+</Aside>
+
+## 必要なレシピの選択
+
+| やりたいこと | 使用するもの | 参照先 |
+| --- | --- | --- |
+| 固定の最終回答を返す | `ScriptedModel` と `assistantMessage()` | [固定レスポンスの返却](#return-a-fixed-response) |
+| 複数ターンのツールループを実行する | `functionCall()` と、それに続くアシスタントのレスポンス | [ツールワークフローのテスト](#test-a-tool-workflow) |
+| リクエストに応じてレスポンスを選ぶ | `modelResponder()` | [リクエストに基づくレスポンスの生成](#derive-a-response-from-the-request) |
+| ランナーがモデルに送信した内容をアサートする | `calls`、`firstCall`、または `lastCall` | [モデル呼び出しの確認](#inspect-model-calls) |
+| ストリーミング実行をテストする | 通常のレスポンスステップ、または厳密なイベントを指定するための `modelStream()` | [ストリーミングのテスト](#test-streaming) |
+| エラーやリトライの判断をテストする | `modelError()` | [モデルの失敗の注入](#inject-model-failures) |
+| 意図しないワークフローの変更を検出する | 厳密なステップと `assertComplete()` | [ワークフローの意図しない変化の検出](#detect-workflow-drift) |
+| サンドボックスを起動せずに `SandboxAgent` をテストする | `scriptedSandboxSession()` と `ScriptedModel` | [サンドボックスエージェントワークフローのテスト](#test-a-sandbox-agent-workflow) |
+| サンドボックス呼び出しを照合する、またはその結果を生成する | サンドボックスステップの `match` または `respond` | [サンドボックスステップの設定](#configure-sandbox-steps) |
+| サンドボックス操作の失敗を注入する | サンドボックスステップの `error` | [サンドボックスステップの設定](#configure-sandbox-steps) |
+| `RealtimeAgent` の関数ツールをテストする | `function_call` を発行し、`sendFunctionCallOutput` を期待する | [音声エージェントのツールワークフローのテスト](#test-a-realtime-agent-tool-workflow) |
+| Realtime 操作を順番に照合する | `runScenario()` と `expectCall()` | [Realtime セッションのテスト](#test-a-realtime-session) |
+| 受信 Realtime イベントを発行する | シナリオ内の `emit()` | [Realtime セッションのテスト](#test-a-realtime-session) |
+| 中断リクエストと通知をテストする | `expectCall('interrupt')` と `emit('audio_interrupted')` | [中断のテスト](#test-interruption) |
+| 次の Realtime 操作を失敗させる | `failNextCall()` | [Realtime の失敗の注入](#inject-a-realtime-failure) |
+| リモート側からの切断をテストする | `disconnect(error?)` | [リモート側からの切断のテスト](#test-a-remote-disconnect) |
+| プロバイダーリクエストのシリアル化や通信ペイロードをテストする | 実際のプロバイダーアダプターと、モック化したネットワークトランスポート | [適切な境界の選択](#choose-the-correct-boundary) |
+| サンドボックスプロバイダーのライフサイクルや分離をテストする | 統合テストでの実際のサンドボックスプロバイダー | [適切な境界の選択](#choose-the-correct-boundary) |
+
+## インポート
+
+ほとんどのアプリケーションでは、利便性のために用意されたサブパスを使用できます。
+
+| 境界 | 推奨インポート | 正式なパッケージからのインポート |
+| --- | --- | --- |
+| エージェント、`Model`、サンドボックスのワークフロー | `@openai/agents/testing` | `@openai/agents-core/testing` |
+| Realtime トランスポート | `@openai/agents/realtime/testing` | `@openai/agents-realtime/testing` |
+
+利便性のためのサブパスは、正式なパッケージと同じテスト用 API を公開します。テスト用シンボルは、メインのランタイムエントリーポイントには含まれません。
+
+## エージェントワークフローのレシピ
+
+### 固定レスポンスの返却
+
+想定されるモデル呼び出しごとに、正規化された出力項目の配列を渡します。出力配列を直接指定する省略記法では、1 回のリクエストに対して決定的なレスポンス ID と使用量が割り当てられます。
+
+<Code
+  lang="typescript"
+  code={fixedResponseExample}
+  title="固定レスポンスの返却"
+/>
+
+テストは必ず `model.assertComplete()` で終了してください。これにより、設定したすべてのステップを消費する前にワークフローが停止したケースを検出できます。
+
+### ツールワークフローのテスト
+
+ツールを呼び出すモデルレスポンスと、最終回答を生成する 2 番目のレスポンスをスクリプトで定義します。これらのモデル呼び出しの間には、実際の SDK ツールパイプラインが実行されます。
+
+<Code
+  lang="typescript"
+  code={toolWorkflowExample}
+  title="複数ターンのツールワークフローのテスト"
+/>
+
+このパターンでは、ツール入力の検証、実行、結果の変換、フック、ガードレール、次のモデルターンをテストします。ツール関数を直接呼び出してツールランタイムを迂回することはありません。
+
+### リクエストに基づくレスポンスの生成
+
+レスポンスが正規化されたリクエストに依存する場合や、モデル境界でアサートするのが適切な場合は、`modelResponder()` を使用します。コールバックは同期でも非同期でもかまいません。
+
+<Code
+  lang="typescript"
+  code={requestAwareResponseExample}
+  title="リクエストの確認とレスポンスの選択"
+/>
+
+レスポンダーは、実際にリクエストに依存する振る舞いに使用してください。単純なシーケンスで十分な場合は、固定ステップを優先してください。固定スクリプトを使うと、想定外のターンを診断しやすくなります。
+
+### モデル呼び出しの確認
+
+`ScriptedModel` は、選択したステップを解決するか、エラーをスローする前に、呼び出しを記録します。
+
+| メンバー         | 内容                                             |
+| ---------------- | ------------------------------------------------ |
+| `calls`          | 呼び出し順に並んだすべての `RecordedModelCall`   |
+| `firstCall`      | 最初の呼び出し、または `undefined`               |
+| `lastCall`       | 最新の呼び出し、または `undefined`               |
+| `remainingSteps` | 設定されたステップのうち、まだ消費されていない数 |
+
+各呼び出しには、`calls` 内の位置に対応するゼロ始まりの `index`、`streamed` フラグ、正規化された `request` があります。記録されたリクエスト内のミュータブルなデータコンテナは、呼び出し時に元のデータから切り離されます。返されたスナップショットを読み取ったり変更したりしても、モデルが保持する履歴は書き換えられません。コールバック、クラスインスタンス、`AbortSignal` などのランタイムオブジェクトは、同一性を保持します。
+
+一般的なアサーションの対象は次のとおりです。
+
+- ユーザー入力、ツール呼び出し、ツール結果を確認するための `call.request.input`
+- モデルに送信された実効設定を確認するための `call.request.modelSettings`
+- 準備された機能を確認するための `call.request.tools` と `call.request.handoffs`
+- ストリーミングと非ストリーミングの処理経路を区別するための `call.streamed`
+
+### ストリーミングのテスト
+
+通常のレスポンスステップは、ストリーミング実行と非ストリーミング実行の両方で機能します。`run(..., { stream: true })` がモデルを呼び出すと、`ScriptedModel` は正規化された開始イベント、アシスタントのテキスト差分、完全な出力と使用量を含む最終レスポンスイベントを発行します。
+
+自動生成されたストリームイベントは、元のデータから切り離されたスナップショットです。返された差分を変更しても、その後の最終レスポンスイベントは変わりません。
+
+正規化された `StreamEvent` の厳密なシーケンスがテスト対象の振る舞いに含まれる場合にのみ、`modelStream(events)` を使用してください。そのシーケンスが記録された呼び出しに依存する場合は、`modelStreamResponder(callback)` を使用します。これらは SDK が正規化したイベントであり、Responses や Chat Completionsの通信チャンクではありません。
+
+<Aside
+  type="tip"
+  title="ほとんどのワークフローテストでは自動ストリーミングを優先"
+>
+  通常の `assistantMessage()` レスポンスを使うと、テストが低レベルの
+  イベント構築に依存しなくなります。順序、部分的な出力、
+  キャンセル、不正なストリームの振る舞いがテスト対象の場合にのみ、厳密なストリームを使用してください。
+</Aside>
+
+元のストリームステップを非ストリーミング呼び出しで使用すると、`reason: 'incompatible_call'` を持つ `InvalidScriptedModelStepError` がスローされます。
+
+### モデルの失敗の注入
+
+`modelError(error, retryAdvice?)` を使用すると、モデル呼び出しを 1 回失敗させることができます。リトライアドバイスには、固定の `ModelRetryAdvice` 値またはコールバックを指定できます。ランナーによるリトライは別のモデル呼び出しとなり、スクリプトで定義された次のステップを消費します。
+
+```text
+modelError(error)
+modelError(error, { suggested: true, replaySafety: 'safe' })
+modelError(error, ({ attempt }) => ({ suggested: attempt === 1 }))
+```
+
+上記が TypeScript のコード例ではなくシグネチャを示しているのは、アドバイスによって再試行が行われるかどうかは、周囲のランナーのリトライポリシーで決まるためです。
+
+すでに中止されたリクエストは、ステップを消費しません。記録された呼び出しが中止チェックポイントに到達した後、リクエストが中止されている場合は、`callIndex` を含む `AbortError` という名前のエラーがスローされます。
+
+カスタムコードの実行中は、キャンセルは協調的に行われます。`ScriptedModel` は、実行中の `modelResponder()` や `modelStreamResponder()` のコールバック、または非同期イテレーターの保留中の `next()` と、リクエストシグナルとの間で競合処理を行いません。無期限に待機する可能性のあるコードは、`call.request.signal` を自身で監視するか、イテレーター内で同じシグナルを監視して、処理を完了させる必要があります。コールバックまたはイテレーターが制御を返すと、`ScriptedModel` はレスポンスを受け入れる前、または次のイベントを発行する前に、シグナルを再度確認します。
+
+### ワークフローの意図しない変化の検出
+
+スクリプトで定義したターンを、期待されるワークフローの形として扱います。次のテストは、2 ターンの注文検索で成功し、ティアダウン中に `assertComplete()` を実行するため、別のアサーションやワークフロー自体が失敗した場合でも、スクリプトを確認します。
+
+たとえば、後からアプリケーションコードが変更され、`lookup_order` に承認が必要になると、実行は最初のスクリプトレスポンスの後で停止します。その後、ティアダウンで未消費のステップが 1 つあることが報告されます。オーケストレーションの変更によって、期待されたステップの後に追加のモデルリクエストが行われると、モデルはそのリクエストで失敗します。そのため、既存の回帰テストは、実際のモデルに新しい経路を推論させることなく、エージェントの制御フローの変更を検出できます。
+
+<Code
+  lang="typescript"
+  code={workflowDriftExample}
+  title="期待するワークフローの形の固定"
+/>
+
+通常の回帰テストでは、これらの不一致エラーをキャッチしないでください。テストを失敗させ、エラーの型とフィールドを使用して、期待されるワークフローのどの部分が変わったのかを診断してください。
+
+| エラー | 構造化フィールド | 意味 |
+| --- | --- | --- |
+| `UnexpectedModelCallError` | `callIndex`, `streamed` | スクリプトが終了した後に、ワークフローが別のモデル呼び出しを行った |
+| `UnconsumedModelStepsError` | `remainingSteps` | すべてのステップを使用する前にワークフローが終了した |
+| `InvalidScriptedModelStepError` | `reason`, `inputIndex?`, `callIndex?`, `stepType?` | ステップの形式が不正、または呼び出しモードと互換性がない |
+| `ScriptedModelRequestAbortedError` | `callIndex?` | スクリプト処理の前または途中でリクエストが中止された |
+
+形式が不正なステップエンベロープは、モデル呼び出しで消費される前に、コンストラクターまたは `enqueue()` によって拒否されます。これにより、セットアップのエラーはワークフローの後半ではなく、テスト定義の近くで失敗として検出されます。
+
+## サンドボックスエージェントのレシピ
+
+### サンドボックスエージェントワークフローのテスト
+
+`ScriptedModel` と `scriptedSandboxSession()` を組み合わせると、Docker コンテナやリモートサンドボックスを作成せずに、実際の `SandboxAgent` ランタイムをテストできます。モデルスクリプトは機能ツールを選択し、サンドボックススクリプトは、対応する `SandboxSession` メソッドが返す内容を定義します。
+
+<Code
+  lang="typescript"
+  code={sandboxWorkflowExample}
+  title="SandboxAgent のシェルワークフローのテスト"
+/>
+
+このテストは、SDK が管理する 2 つの正規化された境界をまたぎます。`ScriptedModel` はモデル側のターンを駆動し、スクリプトで定義したサンドボックスは、実際のシェル機能が生成した `execCommand` の引数を受け取ります。そのため、このテストではツール引数の検証、機能のルーティング、サンドボックスセッションの呼び出し、次のモデルターンへのツール結果の受け渡し、最終出力の処理をカバーします。
+
+実際のモデルがそのコマンドを選択するか、サンドボックスプロバイダーが正常に起動するか、そのプロバイダーがどのようにコマンドを実行するかはテストしません。モデルの判断品質には評価を使用し、プロバイダーのライフサイクル、ファイルシステム、プロセス、分離の振る舞いには、実際のサンドボックスプロバイダーを使う統合テストを使用してください。
+
+### サンドボックスステップの設定
+
+各ステップは、`SandboxSession` メソッドへの呼び出しを 1 回消費します。結果を 1 つだけ選択し、引数が重要な場合にのみマッチャーを追加します。
+
+| ステップのメンバー | 使用する場面 |
+| --- | --- |
+| `result` | メソッドが固定値を返す必要がある |
+| `respond(call)` | 結果が型付きの呼び出し引数や呼び出しインデックスに依存する |
+| `error` | メソッドが特定の失敗をスローするか、その失敗で拒否する必要がある |
+| `match(...args)` | 結果を生成する前に、想定外のメソッド引数をテストで拒否する必要がある |
+
+サンドボックスのメソッドは、`supportsPty()` などの同期メソッドと `execCommand()` などの非同期メソッドを含め、全体で 1 つの順序で照合されます。返されるセッションには、スクリプトで名前を指定したメソッドだけが実装されます。これにより、機能検出が維持されます。たとえば、ワークフローで対話型シェルのサポートを公開する必要がある場合は、`supportsPty` と `writeStdin` の両方をスクリプトで定義してください。
+
+`sandbox.calls` は、呼び出し時の引数を元のデータから切り離したスナップショットとして記録します。各スナップショットには、配列内の呼び出し位置に対応するゼロ始まりの `index`、`method`、位置引数の `args` が含まれます。失敗の診断には `sandbox.remainingSteps` を使用し、テストの最後には `sandbox.assertComplete()` を呼び出してください。これにより、ワークフローが早期に終了しても、期待された操作が未使用のまま見過ごされることを防げます。
+
+| エラー | 構造化フィールド | 意味 |
+| --- | --- | --- |
+| `UnexpectedSandboxCallError` | `callIndex`, `actualMethod`, `expectedMethod`, `remainingSteps` | ワークフローが誤ったメソッドを呼び出した、またはスクリプト終了後も処理を続けた |
+| `SandboxCallMatcherError` | `callIndex`, `method` | ステップのマッチャーが `false` を返した |
+| `UnconsumedSandboxStepsError` | `remainingSteps`, `pendingMethods` | すべてのステップを使用する前にワークフローが終了した |
+| `InvalidScriptedSandboxStepError` | `reason`, `inputIndex`, `method?` | ステップの形式が不正、またはサポートされていないメソッドを指定している |
+
+## 音声エージェントとセッションのレシピ
+
+### 音声エージェントのツールワークフローのテスト
+
+実際の関数ツールを `RealtimeAgent` に接続し、スクリプトで定義したトランスポートから正規化された `function_call` を発行します。`RealtimeSession` はそのエージェントからツールを解決し、SDK ツールパイプラインを通じて検証・実行し、`sendFunctionCallOutput` を通じて結果を返します。
+
+<Code
+  lang="typescript"
+  code={realtimeAgentToolExample}
+  title="音声エージェントの関数ツールのテスト"
+/>
+
+これは、ツールとそのビジネスロジックが `RealtimeAgent` に属するため、エージェントのテストです。スクリプトで定義した `function_call` は、そのツールを使用するというモデルの判断を表します。実際のモデルがエージェントの指示に従うことや、ツールを選択することを証明するものではありません。モデルの判断品質は、評価または統合テストでカバーしてください。
+
+テスト処理はセッションを閉じる前に非同期のツール出力を待つため、このコード例では `AbortSignal` を渡して待機時間を制限しています。呼び出し順序の不一致は引き続き即座に失敗します。シグナルは、リグレッションによって期待されるツール出力がまったく送信されなくなるケースに対応します。
+
+エージェントに属するハンドオフ、ツール承認、ツールガードレールのテストにも、同じパターンを使用できます。振る舞いを開始する正規化された入力を発行し、実際の SDK パイプラインが生成するセッションイベントと送信トランスポート呼び出しをアサートします。
+
+### Realtime セッションのテスト
+
+実際の `RealtimeSession` に `ScriptedRealtimeTransport` を渡します。`runScenario()` を使用すると、テストランナーのタイムアウトに依存せず、期待されるトランスポートのやり取りとセッションのテスト処理を一緒に実行できます。次のコード例は、ユーザーの 2 ターンをシミュレートし、トランスポートが発行した正規化された項目によって、実際のセッション履歴が更新されることを検証します。
+
+<Code
+  lang="typescript"
+  code={realtimeScenarioExample}
+  title="2 ターンの Realtime 会話のテスト"
+/>
+
+`scenario` コールバックは、トランスポート側の処理をスクリプトで定義します。送信呼び出しを照合し、正規化された受信イベントを発行します。`exercise` コールバックはアプリケーションコードのように動作し、公開セッション API を駆動します。コード例のコメントでは、この境界を明示しています。これは `RealtimeSession` の振る舞いをテストするものであり、プロバイダーのサーバーフレームや変換をテストするものではありません。
+
+アプリケーションは、次のメッセージを送信する前にスクリプトで定義された各ターンを待つため、このコード例では期限付きの `AbortSignal` を `runScenario()` に渡しています。シグナルの期限が切れると、`runScenario()` は保留中の期待を拒否し、シナリオはその失敗をアクティブなテスト専用の同期ゲートに転送します。そして、両方のコールバックをブロックしたままにする代わりに、テスト処理がセッションのクリーンアップを実行します。
+
+`expectCall(method, matcher?)` はメソッドに応じて型付けされ、全体で 1 つの順序で呼び出しを照合します。マッチャーにはアサーションを含めることができ、`false` を返して呼び出しを拒否できます。期待が登録される直前に呼び出しが発生した場合、トランスポートは次の期待に備えてその呼び出しを保持します。
+
+`runScenario()` は、どちらか一方が失敗した場合、`AbortSignal` がシナリオをキャンセルした場合、または未完了の期待を残してテスト処理が終了した場合に終了します。期待が残ったままテスト処理が終了すると、`IncompleteRealtimeScenarioError` が発生します。上記のコード例のように、相互に待機しているコールバックが明示的なシグナルの期限に達すると、`runScenario()` は `ScriptedRealtimeScenarioCancelledError` を生成し、保留中の期待を報告します。
+
+### 中断のテスト
+
+アプリケーションにとって重要な方向で、中断をテストします。
+
+- 停止ボタンなどのアプリケーション操作をテストするには、アシスタントの音声レスポンスの開始を発行し、セッションがそれを検知するまで待ってから、`session.interrupt()` を呼び出し、送信される `interrupt` 呼び出しを期待します。
+- 中断通知に対するアプリケーションの処理をテストするには、トランスポートから `audio_interrupted` を発行し、セッションリスナーをアサートします。
+
+このコード例では、一方のイベントが自動的にもう一方を引き起こすという誤解を避けるため、これらを別々のテストにしています。
+
+<Code
+  lang="typescript"
+  code={realtimeInterruptExample}
+  title="双方向の中断のテスト"
+/>
+
+<Aside type="note" title="コード例で明示的なシグナルを使用する理由">
+  `scenario` と `exercise` は並行して実行されます。`readyToInterrupt` の Promise
+  は テストの同期用であり、SDK イベントではありません。`emit()`
+  は同期的であるため、 シナリオはまず実際の `RealtimeSession` が `audio_start`
+  を発行したことをアサートし、 その後でテスト処理の待機を解除して
+  `session.interrupt()` を呼び出せるようにします。これにより、
+  早すぎる中断と、セッションが音声を検知しなかった場合にテストが
+  ハングすることの両方を防ぎます。`audio_interrupted`、`item_update`、`item_deleted`
+  などの受信通知が
+  テスト対象の振る舞いに含まれる場合は、それらを個別に発行してください。
+</Aside>
+
+### Realtime の失敗の注入
+
+`failNextCall(method, error)` は、そのメソッドの次の呼び出しで、指定された値をスローさせます。この呼び出しの試行も記録・照合されるため、テストでは操作と失敗の両方をアサートできます。
+
+<Code
+  lang="typescript"
+  code={realtimeFailureExample}
+  title="次の Realtime 操作の失敗"
+/>
+
+1 つのメソッドに対して複数の失敗を指定した場合、登録順に消費されます。注入した失敗が未使用のまま残ると、`assertComplete()` は失敗します。
+
+### リモート側からの切断のテスト
+
+`transport.disconnect(error?)` を呼び出すと、リモートエンドポイントが接続を閉じる状況をシミュレートできます。これにより、トランスポートは `disconnected` に遷移し、`connection_change` を発行し、必要に応じてトランスポートの `error` を発行します。
+
+接続の喪失やリモート側のシャットダウンには `disconnect()` を使用します。アプリケーションがクリーンアップを開始し、テストで送信される `close` 呼び出しを期待する必要がある場合は、`session.close()` を使用します。
+
+### Realtime 呼び出しの確認
+
+`transport.calls` には、呼び出し順に、元のデータから切り離されたスナップショットが含まれます。ミュータブルな配列、プレーンオブジェクト、バッファーは呼び出し境界でコピーされますが、ランタイムのクラスインスタンスは同一性を保持します。記録された `connect` 呼び出しには `apiKeyProvided` が含まれますが、API キー自体は保存されません。
+
+一般的なメソッド名には、`connect`、`sendEvent`、`requestResponse`、`sendMessage`、`addImage`、`sendAudio`、`updateSessionConfig`、`close`、`mute`、`sendFunctionCallOutput`、`interrupt`、`resetHistory`、`sendMcpResponse` があります。エクスポートされるメソッド型と呼び出し型は `RealtimeTransportLayer` から導出されるため、新しいトランスポートメソッドが型付きのテスト用 API から気付かれないまま欠落することはありません。
+
+### 完了とクリーンアップの検証
+
+Realtime テストは、次の両方のアサーションで終了してください。
+
+| アサーション | 確認内容 |
+| --- | --- |
+| `transport.assertComplete()` | 未照合の呼び出し、保留中の期待、未使用の注入された失敗が残っていない |
+| `transport.assertClosed()` | ライフサイクルのステータスが `disconnected` である |
+
+Realtime のエラーも、構造化された状態を公開します。
+
+| エラー | 構造化フィールド |
+| --- | --- |
+| `UnexpectedRealtimeCallError` | `callIndex`, `expectedMethod`, `actualMethod` |
+| `RealtimeCallMatcherError` | `callIndex`, `actualMethod` |
+| `IncompleteRealtimeScenarioError` | `unconsumedCalls`, `pendingExpectations`, `pendingFailures` |
+| `ScriptedRealtimeScenarioCancelledError` | `pendingExpectations` |
+| `RealtimeTransportNotClosedError` | `status` |
+| `ScriptedRealtimeConnectionSupersededError` | `operation` |
+
+## API 早見表
+
+### モデルステップのファクトリー
+
+| ファクトリー | 使用する場面 |
+| --- | --- |
+| `modelResponse(response)` | 明示的なレスポンスステップを指定したい場合。出力配列を直接渡すことも可能 |
+| `modelResponder(callback)` | レスポンスが記録された呼び出しに依存する |
+| `modelError(error, retryAdvice?)` | モデル呼び出しを 1 回失敗させる必要がある |
+| `modelStream(events)` | 厳密な正規化されたストリームが必要 |
+| `modelStreamResponder(callback)` | 厳密なストリームが記録された呼び出しに依存する |
+
+### 共通の出力ヘルパー
+
+| ヘルパー | 生成するもの |
+| --- | --- |
+| `assistantMessage(text, options?)` | 完了済みのアシスタントのテキストメッセージ |
+| `functionCall(name, arguments, options)` | 完了済みの関数呼び出し。`options.callId` が必須 |
+
+推論、組み込みツール（Hosted）、画像、音声、意図的に不正な形式にしたプロトコルのケースについては、正規化された出力項目を直接渡してください。テストモジュールが 2 つ目のプロバイダー変換レイヤーにならないよう、ヘルパーは意図的に少数にとどめています。
+
+### サンドボックスセッションの制御
+
+| メンバー | 目的 |
+| --- | --- |
+| `scriptedSandboxSession(steps)` | スクリプトで指定されたメソッドを持つ、メモリ内の `SandboxSession` を作成する |
+| `match(...args)` | 期待される 1 回のメソッド呼び出しの型付き引数を検証する |
+| `result` | 固定のメソッド結果を返す |
+| `respond(call)` | 型付きの記録された呼び出しから結果を計算する |
+| `error` | 注入された失敗をスローするか、その失敗で拒否する |
+| `calls` | 呼び出し順に、元のデータから切り離された呼び出しスナップショットを確認する |
+| `assertComplete()` | ワークフローが消費しなかったサンドボックスステップを検出する |
+
+### Realtime の制御
+
+| メソッド | 目的 |
+| --- | --- |
+| `runScenario({ scenario, exercise, signal? })` | 両側を一緒に実行する。テスト専用の同期処理により両側が待機したままになる可能性がある場合は、`signal` を渡す |
+| `expectCall(method, matcher?)` | 次の送信トランスポート呼び出しを照合する |
+| `emit(event, ...args)` | 型付きの受信イベントを同期的に配信する |
+| `failNextCall(method, error)` | 指定したメソッドの次の呼び出しを失敗させる |
+| `disconnect(error?)` | リモート側からの終端的な切断をシミュレートする |
+| `assertComplete()` | 未照合の呼び出し、期待、失敗を検出する |
+| `assertClosed()` | ライフサイクルのクリーンアップを検証する |
+
+## 適切な境界の選択
+
+モデルプロバイダーに依存せずに、SDK の実行ループ、ツール、ハンドオフ、ガードレール、セッション、リトライ、ストリーミングをテストする場合は、`ScriptedModel` を使用してください。
+
+サンドボックスプロバイダーを起動せずに、`SandboxAgent` の機能とオーケストレーションをテストする場合は、`scriptedSandboxSession()` と `ScriptedModel` を使用してください。プロバイダーの作成、プロセス実行、ファイルシステムの忠実性、永続化、分離の確認は、実際のプロバイダーに対する統合テストで行ってください。
+
+WebRTC や WebSocket の接続を開かずに、`RealtimeSession` の振る舞いや、`RealtimeAgent` のツールとハンドオフのオーケストレーションをテストする場合は、`ScriptedRealtimeTransport` を使用してください。エージェントのビジネスロジックは、`RealtimeAgent` に接続されたツール、ハンドオフ、ガードレールに置き、接続、履歴、音声、中断のアサーションは、セッションとトランスポートの境界で行ってください。
+
+これらのテストダブルを、プロバイダーリクエストの変換、HTTP や WebSocket のペイロード、認証ヘッダー、プロバイダー固有のストリーミングチャンク、サンドボックスプロバイダーのライフサイクルや分離のテストに使用しないでください。モデルの通信テストでは、実際のモデルアダプターとモック化したネットワークトランスポートを使用し、サンドボックスの統合テストでは、実際のサンドボックスプロバイダーを使用してください。
+
+## 最終チェックリスト
+
+- 正規化されたモデル、サンドボックスセッション、Realtime トランスポートの境界が管理するやり取りだけをスクリプトで定義します。
+- ランナーの非公開状態ではなく、重要なリクエストフィールドをアサートします。
+- 固定レスポンスステップを優先し、レスポンダーはリクエストに依存する振る舞いにのみ使用します。
+- 自動ストリーミングを優先し、厳密なストリームはイベントレベルの振る舞いが重要な場合にのみ使用します。
+- モデルテストは `model.assertComplete()` で終了します。
+- サンドボックステストは `sandbox.assertComplete()` で終了します。
+- Realtime テストは `transport.assertComplete()` と `transport.assertClosed()` で終了します。
+- エラーメッセージを解析するのではなく、構造化されたエラーフィールドをアサートします。
+- プロバイダーの通信テストには、実際のアダプターとモック化したネットワークトランスポートを使用します。
+
+## 関連ガイド
+
+- [エージェントの実行](/openai-agents-js/ja/guides/running-agents)では、`ScriptedModel` がテストする実行ループについて説明しています。
+- [モデル](/openai-agents-js/ja/guides/models)では、`Model` の境界とプロバイダーアダプターについて説明しています。
+- [クイックスタート](/openai-agents-js/ja/guides/sandbox-agents)では、サンドボックスの機能、セッション、プロバイダーのライフサイクルについて説明しています。
+- [音声エージェントの概要](/openai-agents-js/ja/guides/voice-agents)では、`RealtimeSession` を紹介しています。
+- [リアルタイムトランスポート](/openai-agents-js/ja/guides/voice-agents/transport)では、本番環境向けのトランスポートとトランスポートイベントを扱っています。
+
+## 対象範囲と現在の制限
+
+### 意図的にテストモジュールの対象外としているもの
+
+これらのユーティリティは、SDK が管理する正規化された境界を置き換えます。モデルや外部プロバイダーが担う振る舞いを検証するためのものではありません。
+
+- モデルの品質、指示への追従、ツール選択の品質は、評価または実際のモデルを使用するテストで扱います。
+- Responses と Chat Completionsのリクエストのシリアル化、認証、プロバイダーのデフォルト設定、HTTP の振る舞い、プロバイダーのストリームチャンクには、実際のモデルアダプターと、モック化または制御されたネットワークトランスポートが必要です。
+- サンドボックスの起動、プロセス実行、ファイルシステムの忠実性、永続化、リソース制限、セキュリティ上の分離、プロバイダーのクリーンアップには、実際のサンドボックスプロバイダーを使用した統合テストが必要です。
+- Realtime サーバーの振る舞い、元の WebSocket または WebRTC フレーム、音声のエンコードと再生、認証、ネットワークの復旧には、実際のトランスポートまたは統合環境が必要です。
+
+スクリプトで定義するユーティリティは、これらのレイヤーのエミュレーションを試みません。ここにプロバイダー固有の振る舞いを追加すると、ワークフローテストが、プロバイダープロトコルの 2 つ目の不完全な実装に依存することになります。
+
+### 現在提供されていないもの
+
+現在のテストモジュールでは、次のものは提供されていません。
+
+- 正規化されたすべてのモデル出力項目に対応する便利なビルダー。一般的なアシスタントメッセージと関数呼び出しには小さなヘルパーを使用し、それ以外の正規化された項目は直接渡してください。
+- 高レベルのシミュレーション用 Realtime モデル。Realtime テストでは、送信呼び出しを明示的に照合し、シナリオに必要な正規化された受信イベントを発行します。
+- 順序を問わないサンドボックスの期待。`scriptedSandboxSession()` は、メソッドのステップを全体で 1 つの順序で消費します。
+- テストランナー固有のマッチャー、フィクスチャー、自動ティアダウン。Node.js、Vitest、Jest、その他のランナーのアサーション API とティアダウン API を使用し、提供されている完了とクリーンアップのアサーションを明示的に呼び出してください。
+- プロバイダーの通信テスト向けのモックトランスポート。これらのテストでは、実際のプロバイダーアダプターを使用し、そのネットワーク境界をモック化してください。
+
+これらは現在の API の提供範囲を説明するものであり、省略されている機能を将来のリリースで追加するという約束ではありません。

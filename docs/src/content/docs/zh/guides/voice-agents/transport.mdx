@@ -1,0 +1,226 @@
+---
+title: 传输机制
+description: Learn about the different transport layers that can be used with Voice Agents.
+canonicalHeadingIds:
+  - depth: 2
+    id: 'default-transport-layers'
+    aliases:
+      - '默认传输层'
+  - depth: 3
+    id: 'webrtc-is-the-default-browser-choice'
+    aliases:
+      - '浏览器的默认选择webrtc'
+      - '浏览器默认选择-webrtc'
+      - 'webrtc-是浏览器端的默认选择'
+      - 'webrtc-是浏览器的默认选择'
+  - depth: 3
+    id: 'azure-openai-uses-the-ga-protocol'
+    aliases:
+      - 'azure-openai-使用-ga-协议'
+  - depth: 3
+    id: 'browser-audio-with-server-side-controls'
+    aliases:
+      - '使用服务器端控制的浏览器音频'
+      - '浏览器端音频与服务器端控制'
+      - '浏览器音频与服务器端控制'
+  - depth: 3
+    id: 'react-native-uses-an-app-owned-transport'
+    aliases:
+      - 'react-native-中由应用自行管理的传输层'
+      - 'react-native-使用应用自有传输层'
+      - 'react-native-使用由应用管理的传输机制'
+      - 'react-native-使用应用自行管理的传输层'
+  - depth: 3
+    id: 'websocket-is-the-default-server-choice'
+    aliases:
+      - '服务器的默认选择websocket'
+      - '服务器默认选择-websocket'
+      - 'websocket-是服务器端的默认选择'
+      - 'websocket-是服务器的默认选择'
+  - depth: 3
+    id: 'sip-is-for-call-providers-and-telephony-bridges'
+    aliases:
+      - '用于通话提供商和电话桥接的-sip'
+      - 'sip-适用于通话服务提供商和电话桥接'
+      - 'sip-适用于通话提供商和电话桥接'
+  - depth: 3
+    id: 'cloudflare-workers-and-workerd'
+    aliases:
+      - 'cloudflare-workers-和-workerd'
+  - depth: 3
+    id: 'twilio-phone-calls'
+    aliases:
+      - 'twilio-电话通话'
+  - depth: 3
+    id: 'bring-your-own-transport'
+    aliases:
+      - '自定义传输机制'
+      - '自定义传输层'
+  - depth: 2
+    id: 'access-raw-realtime-events-when-you-need-them'
+    aliases:
+      - '原始-realtime-事件访问'
+      - '原始-realtime-事件的按需访问'
+  - depth: 3
+    id: 'option-1---accessing-the-transport-layer'
+    aliases:
+      - '选项-1传输层访问'
+      - '选项-1---访问传输层'
+  - depth: 3
+    id: 'option-2---only-using-the-transport-layer'
+    aliases:
+      - '选项-2仅使用传输层'
+      - '选项-2---仅使用传输层'
+---
+
+import { Aside, Code } from '@astrojs/starlight/components';
+import customWebRTCTransportExample from '../../../../../../../examples/docs/voice-agents/customWebRTCTransport.ts?raw';
+import websocketSessionExample from '../../../../../../../examples/docs/voice-agents/websocketSession.ts?raw';
+import sipTransportExample from '../../../../../../../examples/docs/voice-agents/sipTransport.ts?raw';
+import transportEventsExample from '../../../../../../../examples/docs/voice-agents/transportEvents.ts?raw';
+import thinClientExample from '../../../../../../../examples/docs/voice-agents/thinClient.ts?raw';
+import cloudflareTransportExample from '../../../../../../../examples/docs/extensions/cloudflare-basic.ts?raw';
+
+请根据会话的运行位置，以及所需的原始媒体数据访问权限或事件控制程度来选择传输方式。
+
+| 场景 | 推荐传输方式 | 原因 |
+| --- | --- | --- |
+| 浏览器语音到语音应用 | `OpenAIRealtimeWebRTC` | 最便捷的方式。SDK 会为您管理麦克风采集、音频播放和 WebRTC 连接。 |
+| 浏览器音频与服务器端 Realtime 控制 | 应用自行管理的 WebRTC 音频，加上服务器端 `RealtimeSession` | 由浏览器传输音频，同时将 Realtime 事件、工具和业务逻辑保留在应用服务器上。 |
+| React Native 移动应用 | 由原生 WebRTC 支持、应用自行管理的 `RealtimeTransportLayer` | SDK 提供 React Native 包解析条件，而应用负责管理原生 WebRTC、权限、音频路由和生命周期。 |
+| 服务器端语音循环或自定义音频管道 | `OpenAIRealtimeWebSocket` | 适用于已自行控制音频采集和播放，并且希望直接访问事件的场景。 |
+| SIP 或电话桥接 | `OpenAIRealtimeSIP` | 通过 `callId` 将 `RealtimeSession` 附加到现有的、由 SIP 发起的 Realtime 通话。 |
+| Cloudflare Workers / workerd | Cloudflare 扩展传输层 | workerd 无法使用全局 `WebSocket` 构造函数建立出站 WebSocket 连接。 |
+| Twilio 上提供商特定的电话流程 | Twilio 扩展传输层 | 为您处理 Twilio 音频转发和打断行为。 |
+
+<Aside type="note">
+  如果您正在构建浏览器产品，并且没有自行管理原始音频的理由， 请从 WebRTC
+  开始。如果您在服务器上运行， 或需要桥接其他媒体系统，请从 WebSocket 或 SIP
+  开始。
+</Aside>
+
+## 默认传输层
+
+### WebRTC 是浏览器的默认选择
+
+默认的浏览器传输层使用 WebRTC。它会自动从麦克风采集音频并播放音频，因此[快速开始](/openai-agents-js/zh/guides/voice-agents/quickstart)中只需一个临时令牌和 `session.connect(...)` 即可建立连接。
+
+在此方式下，`session.connect()` 会尝试等待初始会话配置通过 `session.updated` 得到确认后再完成，从而在音频开始传输前应用您的指令和工具。如果始终未收到确认，仍有超时回退机制。
+
+要使用自己的媒体流或音频元素，请在创建会话时提供一个 `OpenAIRealtimeWebRTC` 实例。
+
+<Code lang="typescript" code={customWebRTCTransportExample} />
+
+传递给 `OpenAIRealtimeWebRTC` 的 `mediaStream` 仍由您的应用管理。关闭传输层不会停止该媒体流的轨道，因此您可以继续将其用于音量表、录音或重新连接。当应用确实不再需要该媒体流时，请对其轨道调用 `stop()`。如果传输层自行打开默认麦克风，`close()` 仍会停止这些由 SDK 管理的轨道。
+
+对于更底层的自定义，`OpenAIRealtimeWebRTC` 还接受 `changePeerConnection`，让您可以在生成 offer 之前检查或替换新创建的 `RTCPeerConnection`。
+
+内置的浏览器传输层会创建一个数据通道，因为浏览器端的 `RealtimeSession` 使用 Realtime 事件来配置和控制会话。如果您的应用必须将这些事件和控制保留在应用服务器上，请使用下文的服务器端控制模式，而不要将浏览器端对等连接的自定义配置视为访问控制边界。
+
+### Azure OpenAI 使用 GA 协议
+
+内置的 Realtime 传输层发送 GA 协议消息。设置自定义 URL 不会将会话更新转换为 Azure 的旧版预览格式。已弃用的区域性 `realtimertc` 端点可能会拒绝 `session.type` 和 `output_modalities` 等 GA 字段，导致服务器无法应用同一次更新中的指令和工具。
+
+对于 Azure WebRTC，请遵循 Microsoft 的 [GA WebRTC 设置指南](https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/realtime-audio-webrtc)：
+
+1. 让应用服务器从 Azure 资源的 `/openai/v1/realtime/client_secrets` 端点获取临时客户端令牌。将 Azure 资源凭据保留在服务器上。
+2. 将 `RealtimeSession` 构造函数的 `model` 选项设置为您的 Azure 部署名称。在 `RealtimeAgent` 上定义指令和可执行工具。
+3. 将临时令牌作为 `apiKey`，并将资源的 `https://<resource>.openai.azure.com/openai/v1/realtime/calls` URL 传递给 `session.connect()`。SDK 会将智能体配置转发给传输层；`initialSessionConfig` 是传输层选项，而不是 `RealtimeSession.connect()` 选项。
+
+如果 Azure 签发的临时令牌不以 `ek_` 开头，则由于浏览器传输层会检查密钥前缀，您需要显式创建一个设置了 `useInsecureApiKey: true` 的 `OpenAIRealtimeWebRTC` 实例。此选项仅禁用前缀检查：仍应向浏览器代码传递临时令牌，绝不能传递长期有效的资源凭据。
+
+使用 GA 时不要移除 `session.type`：GA 要求提供此字段。有关端点和协议的差异，请参阅 Microsoft 的[从预览版迁移到 GA 的指南](https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/realtime-audio-preview-api-migration-guide)。
+
+### 浏览器音频与服务器端控制
+
+某些应用需要在浏览器中采集麦克风音频并播放音频，同时将 Realtime 事件、工具和业务逻辑保留在应用服务器上。此架构结合了 Realtime API 的[统一 WebRTC 接口](https://developers.openai.com/api/docs/guides/realtime-webrtc#creating-a-session-via-the-unified-interface)及其[服务器端控制](https://developers.openai.com/api/docs/guides/realtime-server-controls#with-webrtc)：
+
+1. 浏览器使用标准 WebRTC API 创建仅音频的对等连接，并将其 SDP offer 发送到应用服务器。浏览器不使用 SDK 内置的 WebRTC 传输层，也不创建 Realtime 数据通道。
+2. 应用服务器对用户进行身份验证，应用其 SDP 策略，并使用标准 API 密钥将 offer 以及服务器管理的会话配置发送到 `/v1/realtime/calls`。
+3. 应用服务器验证 SDP answer，并从响应的 `Location` 标头中读取通话 ID。
+4. 应用服务器使用 WebSocket 传输层创建服务器端 `RealtimeSession`，注册事件监听器，将通话 ID 传递给 `session.connect(...)`，然后等待初始 `session.updated` 事件。
+5. 应用服务器将 SDP answer 返回给浏览器。浏览器将该 answer 设置为远程描述，随后音频直接在浏览器与 Realtime API 之间传输。
+6. 应用服务器处理 Realtime 事件和工具。如果浏览器需要状态更新，应用服务器会将其映射为允许列表中的应用事件，而不是转发原始 Realtime 事件流。
+
+<Aside type="caution">
+  在浏览器代码中省略 `createDataChannel()` 并不能构成访问控制
+  边界，因为被修改的客户端可以更改其代码或 SDP offer。应在应用服务器创建
+  Realtime
+  通话之前强制执行媒体策略。每项需要特权的工具操作都必须根据可信且已通过身份验证的
+  应用或会话上下文（例如 `runContext.context`）进行授权，绝不能根据
+  模型提供的工具参数进行授权。
+</Aside>
+
+请参阅 [`realtime-server-controlled` 代码示例](https://github.com/openai/openai-agents-js/tree/main/examples/realtime-server-controlled)，了解一个完整的应用，其中包含仅音频的浏览器对等连接、服务器强制执行的 SDP 策略、旁路 `RealtimeSession`、映射后的浏览器事件以及清理行为。
+
+### React Native 使用应用自行管理的传输层
+
+`@openai/agents-core` 和 `@openai/agents-realtime` 提供 React Native 包解析条件，使 Metro 无需 Node.js 内置模块即可解析可移植的 SDK 兼容层。内置的 `OpenAIRealtimeWebRTC` 仍然是浏览器传输层，因为它依赖浏览器的 WebRTC 全局对象和 DOM 音频元素。在 React Native 中，请安装并自行管理原生 WebRTC 实现，然后通过自定义 `RealtimeTransportLayer` 将其连接到 `RealtimeSession`。
+
+[`examples/realtime-react-native`](https://github.com/openai/openai-agents-js/tree/main/examples/realtime-react-native) Expo 开发构建代码示例展示了应用自行管理的 `react-native-webrtc` 传输层、麦克风权限、音频路由，以及服务器端临时令牌端点。由于 `react-native-webrtc` 包含原生代码，因此不支持 Expo Go。请将标准 OpenAI API 密钥保留在服务器上，并且只向移动应用传递短期有效的临时客户端令牌。
+
+### WebSocket 是服务器的默认选择
+
+创建会话时，传递 `transport: 'websocket'` 或 `OpenAIRealtimeWebSocket` 实例，即可使用 WebSocket 连接而非 WebRTC。这适用于服务器端用例、电话桥接和自定义音频管道。
+
+使用 WebSocket 时，套接字打开且初始配置发送后，`session.connect()` 就会完成。相应的 `session.updated` 事件可能稍后才会到达，因此不要认为 `connect()` 完成就意味着服务器已经回传了该更新。
+
+<Code lang="typescript" code={websocketSessionExample} />
+
+可以使用任何录音或播放库来处理原始 PCM16 音频字节。
+
+对于高级集成，`OpenAIRealtimeWebSocket` 接受 `createWebSocket()`，以便您提供自己的套接字实现；当自定义连接器负责将套接字切换到已连接状态时，还可使用 `skipOpenEventListeners`。`@openai/agents-extensions` 中的 Cloudflare 传输层就是基于这些钩子构建的。
+
+### SIP 适用于通话提供商和电话桥接
+
+当您希望将 `RealtimeSession` 附加到现有的、由 SIP 发起的 Realtime 通话时，请使用 `OpenAIRealtimeSIP`。这是一个支持 SIP 的轻量传输层：音频由 SIP 通话本身处理，您通过 `callId` 连接 SDK 会话。
+
+1. 使用 `OpenAIRealtimeSIP.buildInitialConfig()` 生成初始会话配置，以接受来电。这可确保 SIP 邀请和后续 SDK 会话从相同的默认配置开始。
+2. 附加一个使用 `OpenAIRealtimeSIP` 传输层的 `RealtimeSession`，并使用提供商 webhook 下发的 `callId` 进行连接。
+3. 如果需要提供商特定的媒体转发或事件桥接，请使用 Twilio 扩展等集成传输层。
+
+<Aside type="caution">
+  SIP 来电接受操作仅支持 Realtime 轮次检测字段的一个子集。 如果配置中包含
+  `threshold`、`prefixPaddingMs` 或 `silenceDurationMs`（或其 snake_case
+  对应形式），`OpenAIRealtimeSIP.buildInitialConfig()` 会在本地抛出异常， 因为
+  Realtime Calls API 会拒绝 SIP 会话中的这些
+  `session.audio.input.turn_detection` 属性。
+</Aside>
+
+<Code lang="typescript" code={sipTransportExample} />
+
+### Cloudflare Workers 和 workerd
+
+Cloudflare Workers 和其他 workerd 运行时无法使用全局 `WebSocket` 构造函数建立出站 WebSocket 连接。请使用扩展包中的 Cloudflare 传输层，它会在内部执行基于 `fetch()` 的协议升级。
+
+<Code lang="typescript" code={cloudflareTransportExample} />
+
+完整设置步骤请参阅 [Cloudflare 上的语音智能体](/openai-agents-js/zh/extensions/cloudflare)。
+
+### Twilio 电话通话
+
+您可以使用原始 WebSocket 或 `@openai/agents-extensions` 中的专用 Twilio 传输层，将 `RealtimeSession` 连接到 Twilio。如果您希望 SDK 为 Twilio Media Streams 处理打断时机和音频转发，专用传输层是更好的默认选择。
+
+完整设置步骤请参阅 [Twilio 上的语音智能体](/openai-agents-js/zh/extensions/twilio)。
+
+### 自定义传输层
+
+如果您希望使用其他语音到语音 API，或已有自己的自定义传输机制，可以实现 `RealtimeTransportLayer` 接口并自行发出 `RealtimeTransportEventTypes` 事件。
+
+## 原始 Realtime 事件的按需访问
+
+如果您希望更直接地访问底层 Realtime API，有两种选择。
+
+### 选项 1 - 访问传输层
+
+如果您仍希望利用 `RealtimeSession` 的全部功能，可以通过 `session.transport` 访问传输层。
+
+传输层会通过 `*` 事件发出它收到的每个事件，您也可以使用 `sendEvent()` 发送原始事件。`*` 监听器接收的是原始 JSON 解析结果的结构化克隆，其中包括当前 SDK 模式未知的字段。具名事件和派生事件的监听器仍会接收经过验证和规范化的事件对象。这为 `session.update`、`response.create` 或 `response.cancel` 等底层操作提供了直接访问通道。
+
+<Code lang="typescript" code={transportEventsExample} />
+
+### 选项 2 - 仅使用传输层
+
+如果您不需要自动执行工具、护栏或本地历史记录管理，也可以将传输层用作仅管理连接和打断的"轻量"客户端。
+
+<Code lang="typescript" code={thinClientExample} />

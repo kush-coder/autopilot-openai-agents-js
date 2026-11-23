@@ -1,0 +1,66 @@
+---
+title: トラブルシューティング
+description: Learn how to troubleshoot issues with the OpenAI Agents SDK.
+canonicalHeadingIds:
+  - depth: 2
+    id: 'supported-environments'
+    aliases:
+      - '対応環境'
+      - 'サポート対象環境'
+  - depth: 3
+    id: 'limited-support'
+    aliases:
+      - '制限付きサポート'
+  - depth: 2
+    id: 'debug-logging'
+    aliases:
+      - 'デバッグログ'
+---
+
+## サポート対象環境
+
+OpenAI Agents SDK は、次のサーバー環境でサポートされています。
+
+- Node.js 22+
+- Deno 2.35+
+- Bun 1.2.5+
+
+### 制限付きサポート
+
+- **Cloudflare Workers** : Agents SDK は Cloudflare Workers で使用できますが、現在はいくつかの制限があります。
+  - 現在、SDK を使用するには `nodejs_compat` を有効にする必要があります
+  - リクエストの終了時にトレースを手動でフラッシュする必要があります。詳細は[トレーシング](/openai-agents-js/ja/guides/tracing#export-loop-lifecycle)を参照してください。
+  - Cloudflare Workers の `AsyncLocalStorage` サポートは限定的なため、一部のトレースが不正確になる可能性があります
+  - アウトバウンドの WebSocket 接続では、fetch ベースのアップグレードを使用する必要があります（グローバルの `WebSocket` コンストラクターは使用できません）。Realtime では、`@openai/agents-extensions` の Cloudflare トランスポート（`CloudflareRealtimeTransportLayer`）を使用してください。
+- **Responses API WebSocket トランスポート** :
+  - グローバルの `WebSocket` 実装が必要です。
+  - `WebSocket` 実装は、ハンドシェイクでのカスタムヘッダーをサポートしている必要があります。
+  - ブラウザースタイルの WebSocket API の多く（および一部のエッジランタイム）は、カスタムの送信ヘッダーをサポートしていません。これらの環境では、代わりにデフォルトの HTTP Responses トランスポートを使用してください。
+  - グローバルの `WebSocket` 実装がない、またはカスタムヘッダーがサポートされていないことを示すエラーが表示される場合、そのランタイムの WebSocket 実装は Responses WebSocket トランスポートと互換性がありません。
+- **ブラウザー** :
+  - コア SDK はブラウザー用にバンドルできますが、ブラウザーではトレーシングがデフォルトで無効になっています。
+- **React Native** :
+  - `@openai/agents-core` と `@openai/agents-realtime` は、ポータブルな shim のために React Native 向けのパッケージ条件を提供していますが、組み込みの `OpenAIRealtimeWebRTC` は引き続きブラウザー専用です。
+  - Realtime アプリでは、`react-native-webrtc` などのネイティブ WebRTC 実装を基盤とする、アプリ独自のトランスポートを用意する必要があります。また、権限、音声ルーティング、トランスポートのライフサイクルは、引き続きアプリ側の責任で管理する必要があります。
+  - Expo Go はネイティブ WebRTC モジュールを読み込めません。Expo 開発ビルドまたはネイティブの React Native プロジェクトを使用してください。[`examples/realtime-react-native`](https://github.com/openai/openai-agents-js/tree/main/examples/realtime-react-native) のコード例を参照してください。
+- **v8 アイソレート** :
+  - 適切なブラウザー向けポリフィルを備えたバンドラーを使用すれば、v8 アイソレート向けに SDK をバンドルできるはずですが、トレーシングは動作しません
+  - v8 アイソレートでのテストは十分に行われていません
+
+## デバッグログ
+
+SDK で問題が発生した場合は、デバッグログを有効にして、何が起きているかについて詳しい情報を取得できます。
+
+環境変数 `DEBUG` を `openai-agents:*` に設定すると、デバッグログが有効になります。
+
+```bash
+DEBUG=openai-agents:*
+```
+
+モデルとツールのデータは、デフォルトではマスキングされたままです。これらの詳細が必要な場合は、[ログ内の機密データ](/openai-agents-js/ja/guides/config#sensitive-data-in-logs)を参照し、ログが安全に扱われる環境でのみ明示的に有効にしてください。
+
+また、デバッグの対象を SDK の特定の部分に限定することもできます。
+
+- `openai-agents:core` — SDK のメインの実行ロジック
+- `openai-agents:openai` — OpenAI API の呼び出し
+- `openai-agents:realtime` — 音声エージェントのコンポーネント

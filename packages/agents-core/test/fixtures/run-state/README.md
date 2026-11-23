@@ -1,0 +1,31 @@
+# Historical RunState compatibility corpus
+
+This directory is immutable compatibility evidence for released `RunState` writers. Ordinary tests only read these files. They never regenerate, normalize in place, or update snapshots.
+
+`sources.json` accounts for every schema accepted by the production reader:
+
+- `published_writer` means a released `@openai/agents-core` package actually emitted the schema and has checked-in writer output.
+- `published_reader_only` means a released reader accepted the schema, but no published writer emitted it. Such a schema has an explicit policy entry and no fabricated historical fixture.
+- `current_unreleased` means the schema exists on `main` but has not been published.
+
+Each historical fixture records its package version, release tag, full source commit, npm integrity, scenario, path, and SHA-256 in `sources.json`. The published package and npm integrity identify the primary writer artifact; the tag and commit are supplementary source provenance. Minimal fixtures prove the writer format for every published schema. Paired Session captures are listed under the same writer in `sessionCaptures`. Their checksum covers both the checkpoint and its matching Session history. Feature and resume fixtures are intentionally limited to durable boundaries that need more than an empty state to exercise compatibility.
+
+The released `1.17` sandbox format predates the mount-credential redaction boundary added by schema `1.18`. The `v0.16.0` writer fixtures establish the released `1.18` boundary, including canonical per-call approval identity. The `v0.17.0` writer fixture establishes the released `1.19` boundary for exact-call approval precedence and Docker network-isolation state. The `v0.18.0` writer emits schema `1.20`, which adds the next sandbox envelope version for Docker labels and exact current-response ownership for serialized approval resumes. The `v0.19.0` writer emits schema `1.21`, which re-evaluates conditional policies against refreshed normalized input on approval resume. Normalized values and comparison evidence are never serialized. The `v0.20.0` writer emits schema `1.22`, which records hosted MCP namespace discovery provenance; older unmarked namespace history requires rediscovery, while explicit MCP descriptors remain usable. The `v0.21.0` writer emits schema `1.23`, which preserves nested numeric usage breakdowns. The `v0.22.0` writer emits schema `1.24` for bounded JSON usage metadata beyond nested numeric breakdowns. The writer retains `1.23` for numeric-only usage and compatible nested runs, and selects `1.24` when richer metadata, a newer nested run, completion evidence for a recovered handoff, a version-6 sandbox envelope, or a child-owned approval in a guarded output-bearing checkpoint requires it. Version 6 identifies client-owned unresolved environment references so older SDKs cannot resume them in the runner process.
+
+Schema `1.25` records whether a retained function-tool output string can be passed to a custom callback on approval resume. The writer selects `1.25` when the checkpoint contains this information or embeds a child checkpoint that requires `1.25`. An ordinary JSON object already retains its type in schema `1.23`. An older checkpoint can supply an explicitly structured JSON result, but a saved string without that evidence may also be a rendered non-JSON result. Use the original live RunState when such a value is required by the callback. The prototype-key negative fixture uses the obvious non-secret sentinel `sentinel-not-a-secret`.
+
+## Regeneration
+
+Regeneration is an explicit maintainer action and does not make OpenAI API calls. Remove any ambient API credential and generate candidates outside the checked-in corpus:
+
+```bash
+env -u OPENAI_API_KEY pnpm tsx packages/agents-core/test/fixtures/run-state/generate-corpus.mts --all
+```
+
+Review candidates and provenance before promotion. Promotion is the only mode allowed to replace checked-in files:
+
+```bash
+env -u OPENAI_API_KEY pnpm tsx packages/agents-core/test/fixtures/run-state/generate-corpus.mts --all --promote
+```
+
+The generator verifies the local tag commit and registry metadata, downloads the exact published npm tarball, independently verifies its bytes against the recorded SRI, and runs the artifact's shipped entrypoint. It uses the exact source commit's checked-in lockfile and pinned pnpm version only to provide deterministic historical dependencies. All candidates are generated successfully before promotion begins. Fixture changes are durable compatibility-contract changes and should receive the same scrutiny as reader changes.

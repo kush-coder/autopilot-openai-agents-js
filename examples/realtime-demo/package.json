@@ -1,0 +1,26 @@
+{
+  "name": "realtime-demo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build-check": "tsc --noEmit",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "generate-token": "node token.ts"
+  },
+  "devDependencies": {
+    "typescript": "~5.8.3",
+    "vite": "^8.3.6"
+  },
+  "dependencies": {
+    "@openai/agents-realtime": "workspace:*",
+    "@tailwindcss/vite": "^4.3.4",
+    "openai": "^7.56.0",
+    "tailwindcss": "^4.3.4",
+    "zod": "^4.6.7"
+  },
+  "engines": {
+    "node": "^22.18.0 || ^24.0.0 || >=26.0.0"
+  }
+}
